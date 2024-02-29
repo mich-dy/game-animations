@@ -17,12 +17,13 @@ file(GLOB SOURCES
   tools/*.cpp
   vulkan/*.cpp
   model/*.cpp
+  physics/*.cpp
   vkb/*.cpp
   imgui/*.cpp
 )
 add_executable(Main ${SOURCES})
 
-target_include_directories(Main PUBLIC include window tools vulkan model vkb vma imgui)
+target_include_directories(Main PUBLIC include window tools vulkan model physics vkb vma imgui)
 
 find_package(glfw3 3.3 REQUIRED)
 find_package(Vulkan REQUIRED)

@@ -3,39 +3,33 @@
 #include <glm/glm.hpp>
 
 #include "VkRenderData.h"
+#include "RigidBody.h"
 
 class Model {
   public:
     VkMesh getVertexData();
+    void setPhysicsEnabled(const bool value);
 
-    glm::vec3 getPosition();
+    void update(float deltaTime);
+
+    glm::vec3 getPosition() const ;
+    void setPosition(const glm::vec3 pos);
 
     void setMass(const float mass);
-    void setPosition(const glm::vec3 pos);
     void setVelocity(const glm::vec3 velo);
-    void setAcceleration(const glm::vec3 acc);
+    void setAcceleration(const glm::vec3 accel);
     void setDaming(const float damp);
 
     void addForce(const glm::vec3 force);
-
-    void setPhysicsEnabled(const bool value);
-    void updatePhysics(const float deltaTime);
+    /* TODO: is this needed? */
+    void clearAccumulatedForce();
 
   private:
     void init();
-    VkMesh mVertexData;
 
+    VkMesh mVertexData {};
 
-    bool mPhysicsEnabled;
+    bool mPhysicsEnabled = false;
 
-    glm::vec3 mPosition;
-    glm::vec3 mVelocity;
-    glm::vec3 mAcceleration;
-    double mDamping;
-
-    // using the inverse of the mass is easier (i.e., inverse zero -> infinit mass)
-    double mInverseMass;
-
-    void clearAccumulatedForce();
-    glm::vec3 mAccumulatedForce;
+    RigidBody mRigidBody {};
 };

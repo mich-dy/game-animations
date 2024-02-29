@@ -660,7 +660,7 @@ bool VkRenderer::draw(const float deltaTime) {
 
   /* update physics */
   if (mRenderData.rdPhysicsEnabled) {
-    mModel->updatePhysics(deltaTime);
+    mModel->update(deltaTime);
   }
   mQuatModelPos = mModel->getPosition();
 

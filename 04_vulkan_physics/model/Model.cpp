@@ -1,83 +1,51 @@
 #include "Model.h"
 #include "Logger.h"
 
-glm::vec3 Model::getPosition() {
-  return mPosition;
-}
-
-void Model::setMass(const float mass) {
-  if (mass == 0.0f) {
-    Logger::log(1, "%s error: mass cannot be zero\n", __FUNCTION__);
-    return;
-  }
-
-  /* infinite mass */
-  if (mass < 0.0f) {
-    mInverseMass = 0.0f;
-    return;
-  }
-
-  mInverseMass = 1.0f / mass;
-}
-
 void Model::setPosition(const glm::vec3 pos) {
-  mPosition = pos;
+  mRigidBody.setPosition(pos);
 }
 
-void Model::setVelocity(const glm::vec3 velo) {
-  mVelocity = velo;
-}
-
-void Model::setAcceleration(const glm::vec3 acc) {
-  mAcceleration = acc;
-}
-
-void Model::setDaming(const float damp) {
-  mDamping = damp;
+glm::vec3 Model::getPosition() const {
+  return mRigidBody.getPosition();
 }
 
 void Model::setPhysicsEnabled(const bool value) {
   mPhysicsEnabled = value;
 }
 
-void Model::updatePhysics(const float deltaTime) {
-  if (!mPhysicsEnabled) {
-    return;
-  }
+void Model::setMass(const float mass) {
+  mRigidBody.setMass(mass);
+}
 
-  /* infinite mass, don't do anything */
-  if (mInverseMass <= 0.0f) {
-    return;
-  }
+void Model::setVelocity(const glm::vec3 velo) {
+  mRigidBody.setVelocity(velo);
+}
 
-  if (deltaTime <= 0.0f) {
-    Logger::log(1, "%s error: deltaTime must be greater than zero\n", __FUNCTION__);
-    return;
-  }
+void Model::setAcceleration(const glm::vec3 accel) {
+  mRigidBody.setAcceleration(accel);
+}
 
-  /* scale the velocity according to the delta time and update position */
-  glm::vec3 scaledVelocity = mVelocity * deltaTime;
-  mPosition += scaledVelocity;
-
-  glm::vec3 realAcceleration = mAcceleration;
-
-  /* scale acceleration  and add to velocity */
-  glm::vec3 scaledAcceleration = realAcceleration * deltaTime;
-  mVelocity += scaledAcceleration;
-
-  /* apply damping (i.e. drag by air) */
-  mVelocity *= std::pow(mDamping, deltaTime);
-
-  /* clear summed up force */
-  clearAccumulatedForce();
+void Model::setDaming(const float damp) {
+  mRigidBody.setDaming(damp);
 }
 
 void Model::addForce(const glm::vec3 force) {
-  mAccumulatedForce += force;
+  mRigidBody.addForce(force);
 }
 
 void Model::clearAccumulatedForce() {
-  mAccumulatedForce = glm::vec3(0.0f);
+  mRigidBody.clearAccumulatedForce();
+}
+
+
+
+void Model::update(float deltaTime) {
+  /* TODO: animations etc. */
+
+  /* physics update */
+  if (mPhysicsEnabled) {
+    mRigidBody.updatePhysics(deltaTime);
+  }
 }
 
 VkMesh Model::getVertexData() {
