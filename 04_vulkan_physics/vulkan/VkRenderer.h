@@ -29,6 +29,8 @@
 #include "CoordArrowsModel.h"
 #include "ArrowModel.h"
 
+#include "ForceRegistry.h"
+
 #include "VkRenderData.h"
 
 class VkRenderer {
@@ -59,7 +61,10 @@ class VkRenderer {
     ArrowModel mArrowModel{};
     VkMesh mQuatArrowMesh{};
 
-    std::unique_ptr<Model> mModel = nullptr;
+    ForceRegistry mForceRegistry;
+
+    std::shared_ptr<Model> mModel = nullptr;
+
     std::unique_ptr<VkMesh> mQuatModelMesh = nullptr;
     std::unique_ptr<VkMesh> mAllMeshes = nullptr;
     unsigned int mLineIndexCount = 0;

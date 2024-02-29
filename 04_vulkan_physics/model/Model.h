@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <memory>
 #include <glm/glm.hpp>
 
 #include "VkRenderData.h"
@@ -7,6 +8,8 @@
 
 class Model {
   public:
+    Model();
+
     VkMesh getVertexData();
     void setPhysicsEnabled(const bool value);
 
@@ -24,6 +27,8 @@ class Model {
     /* TODO: is this needed? */
     void clearAccumulatedForce();
 
+    std::shared_ptr<RigidBody> getRigidBody();
+
   private:
     void init();
 
@@ -31,5 +36,5 @@ class Model {
 
     bool mPhysicsEnabled = false;
 
-    RigidBody mRigidBody {};
+    std::shared_ptr<RigidBody> mRigidBody = nullptr;
 };

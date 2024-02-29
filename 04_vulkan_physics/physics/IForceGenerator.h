@@ -1,9 +1,11 @@
 #pragma once
 
+#include <memory>
+
 #include "RigidBody.h"
 
 /* Interface style base class */
 class IForceGenerator {
   public:
-    virtual void updateForce(RigidBody& body, float deltaTime) = 0;
+    virtual void updateForce(std::shared_ptr<RigidBody> body, float deltaTime) = 0;
 };

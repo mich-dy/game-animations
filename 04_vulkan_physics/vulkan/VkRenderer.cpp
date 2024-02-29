@@ -1,10 +1,12 @@
 #include <imgui_impl_glfw.h>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <tuple>
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#include "GravityForce.h"
 #include "VkRenderer.h"
 #include "Logger.h"
 
@@ -95,11 +97,18 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
     return false;
   }
 
-  mModel = std::make_unique<Model>();
+  mModel = std::make_shared<Model>();
   if (!initModel()) {
     Logger::log(1, "%s error: model init failed\n", __FUNCTION__);
     return false;
   }
+
+  std::shared_ptr<GravityForce> gravity = std::make_shared<GravityForce>(glm::vec3(0.0f, -10.0f, 0.0f));
+
+  mForceRegistry.addEntry(mModel->getRigidBody(), gravity);
+  mForceRegistry.updateForces(1.0f);
+  mForceRegistry.deleteEntry(mModel->getRigidBody(), gravity);
+  mForceRegistry.updateForces(1.0f);
 
   mQuatModelMesh = std::make_unique<VkMesh>();
   Logger::log(1, "%s: model mesh storage initialized\n", __FUNCTION__);

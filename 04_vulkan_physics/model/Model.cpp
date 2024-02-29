@@ -1,12 +1,20 @@
 #include "Model.h"
 #include "Logger.h"
 
+Model::Model() {
+  mRigidBody = std::make_shared<RigidBody>();
+}
+
+std::shared_ptr<RigidBody> Model::getRigidBody() {
+  return mRigidBody;
+}
+
 void Model::setPosition(const glm::vec3 pos) {
-  mRigidBody.setPosition(pos);
+  mRigidBody->setPosition(pos);
 }
 
 glm::vec3 Model::getPosition() const {
-  return mRigidBody.getPosition();
+  return mRigidBody->getPosition();
 }
 
 void Model::setPhysicsEnabled(const bool value) {
@@ -14,27 +22,27 @@ void Model::setPhysicsEnabled(const bool value) {
 }
 
 void Model::setMass(const float mass) {
-  mRigidBody.setMass(mass);
+  mRigidBody->setMass(mass);
 }
 
 void Model::setVelocity(const glm::vec3 velo) {
-  mRigidBody.setVelocity(velo);
+  mRigidBody->setVelocity(velo);
 }
 
 void Model::setAcceleration(const glm::vec3 accel) {
-  mRigidBody.setAcceleration(accel);
+  mRigidBody->setAcceleration(accel);
 }
 
 void Model::setDaming(const float damp) {
-  mRigidBody.setDaming(damp);
+  mRigidBody->setDaming(damp);
 }
 
 void Model::addForce(const glm::vec3 force) {
-  mRigidBody.addForce(force);
+  mRigidBody->addForce(force);
 }
 
 void Model::clearAccumulatedForce() {
-  mRigidBody.clearAccumulatedForce();
+  mRigidBody->clearAccumulatedForce();
 }
 
 
@@ -44,7 +52,7 @@ void Model::update(float deltaTime) {
 
   /* physics update */
   if (mPhysicsEnabled) {
-    mRigidBody.updatePhysics(deltaTime);
+    mRigidBody->updatePhysics(deltaTime);
   }
 }
 
