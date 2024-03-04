@@ -59,6 +59,8 @@ struct VkRenderData {
   int rdRotYAngle = 0;
   int rdRotZAngle = 0;
 
+  glm::vec3 rdModelPosition = glm::vec3(0.0f);
+
   VmaAllocator rdAllocator = nullptr;
 
   vkb::Instance rdVkbInstance{};

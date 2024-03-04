@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
 #include <glm/glm.hpp>
 
 class RigidBody {
@@ -23,12 +26,12 @@ class RigidBody {
 
   private:
     // using the inverse of the mass is easier (i.e., inverse zero -> infinit mass)
-    double mInverseMass;
+    float mInverseMass = 0.0f;
 
-    glm::vec3 mPosition;
-    glm::vec3 mVelocity;
-    glm::vec3 mAcceleration;
-    double mDamping;
+    glm::vec3 mPosition = glm::vec3(0.0f);
+    glm::vec3 mVelocity = glm::vec3(0.0f);
+    glm::vec3 mAcceleration = glm::vec3(0.0f);
+    float mDamping = 0.0;
 
-    glm::vec3 mAccumulatedForce;
+    glm::vec3 mAccumulatedForce = glm::vec3(0.0f);
 };

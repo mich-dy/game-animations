@@ -4,11 +4,17 @@
 #include <vector>
 #include <memory>
 #include <string>
+
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
-/* Vulkan also before GLFW */
+
+/* include Vulkan before GLFW */
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
+
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 
@@ -61,7 +67,7 @@ class VkRenderer {
     ArrowModel mArrowModel{};
     VkMesh mQuatArrowMesh{};
 
-    ForceRegistry mForceRegistry;
+    ForceRegistry mForceRegistry{};
 
     std::shared_ptr<Model> mModel = nullptr;
 
@@ -73,7 +79,8 @@ class VkRenderer {
     glm::mat4 mRotZMat = glm::mat4(1.0f);
 
     /* initial position */
-    glm::vec3 mQuatModelInitialPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 mSpringAnchorPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 mQuatModelInitialPos = glm::vec3(1.0f, 1.0f, 2.0f);
     glm::vec3 mQuatModelPos = glm::vec3(0.0f, 0.0f, 0.0f);
 
     glm::vec3 mRotXAxis = glm::vec3(1.0f, 0.0f, 0.0f);

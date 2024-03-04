@@ -7,6 +7,8 @@
 #include <vk_mem_alloc.h>
 
 #include "GravityForce.h"
+#include "AnchoredSpringForce.h"
+#include "AnchoredBungeeForce.h"
 #include "VkRenderer.h"
 #include "Logger.h"
 
@@ -104,11 +106,10 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
   }
 
   std::shared_ptr<GravityForce> gravity = std::make_shared<GravityForce>(glm::vec3(0.0f, -10.0f, 0.0f));
-
   mForceRegistry.addEntry(mModel->getRigidBody(), gravity);
-  mForceRegistry.updateForces(1.0f);
-  mForceRegistry.deleteEntry(mModel->getRigidBody(), gravity);
-  mForceRegistry.updateForces(1.0f);
+
+  std::shared_ptr<AnchoredBungeeForce> spring = std::make_shared<AnchoredBungeeForce>(mSpringAnchorPos, 15.0f, 2.0f);
+  mForceRegistry.addEntry(mModel->getRigidBody(), spring);
 
   mQuatModelMesh = std::make_unique<VkMesh>();
   Logger::log(1, "%s: model mesh storage initialized\n", __FUNCTION__);
@@ -121,6 +122,18 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
   Logger::log(1, "%s: Vulkan renderer initialized to %ix%i\n", __FUNCTION__, width, height);
   return true;
 }
+
+bool VkRenderer::initModel() {
+  mModel->setPosition(mQuatModelInitialPos);
+  mModel->setMass(2.0f);
+  //mModel->setVelocity(glm::vec3(2.5f, 5.0f, 2.0f));
+  //mModel->setAcceleration(glm::vec3(0.0f,-8.0f, 0.0f));
+  mModel->setDaming(0.9f);
+  mModel->setPhysicsEnabled(true);
+
+  return true;
+}
+
 
 bool VkRenderer::deviceInit() {
   /* instance and window - we need Vukan 1.1 for the "VK_KHR_maintenance1" extension */
@@ -558,18 +571,6 @@ void VkRenderer::handleMovementKeys() {
   }
 }
 
-bool VkRenderer::initModel() {
-  mModel->setPosition(mQuatModelInitialPos);
-  mModel->setMass(2.0f);
-  mModel->setVelocity(glm::vec3(2.5f, 5.0f, 0.0f));
-  mModel->setAcceleration(glm::vec3(0.0f,-8.0f, 0.0f));
-  mModel->setDaming(0.99f);
-  mModel->setPhysicsEnabled(true);
-
-  return true;
-}
-
-
 bool VkRenderer::draw(const float deltaTime) {
   /* no update on zero diff */
   if (deltaTime == 0.0f) {
@@ -669,9 +670,11 @@ bool VkRenderer::draw(const float deltaTime) {
 
   /* update physics */
   if (mRenderData.rdPhysicsEnabled) {
+    mForceRegistry.updateForces(deltaTime);
     mModel->update(deltaTime);
   }
   mQuatModelPos = mModel->getPosition();
+  mRenderData.rdModelPosition = mQuatModelPos;
 
   /* create quaternion from angles  */
   mQuatModelOrientation = glm::normalize(glm::quat(glm::vec3(
@@ -713,7 +716,18 @@ bool VkRenderer::draw(const float deltaTime) {
       mQuatArrowMesh.vertices.begin(), mQuatArrowMesh.vertices.end());
   }
 
-  /* draw both models */
+  /* add a line for the spring */
+  VkVertex springLineStart;
+  springLineStart.position = mSpringAnchorPos;
+  springLineStart.color = glm::vec3(1.0f);
+  VkVertex springLineEnd;
+  springLineEnd.position = mQuatModelPos;
+  springLineEnd.color = glm::vec3(1.0f);
+
+  mAllMeshes->vertices.push_back(springLineStart);
+  mAllMeshes->vertices.push_back(springLineEnd);
+
+  /* draw box model */
   *mQuatModelMesh = mModel->getVertexData();
   mRenderData.rdTriangleCount += mQuatModelMesh->vertices.size() / 3;
   std::for_each(mQuatModelMesh->vertices.begin(), mQuatModelMesh->vertices.end(),
@@ -730,7 +744,7 @@ bool VkRenderer::draw(const float deltaTime) {
     mQuatModelMesh->vertices.begin(), mQuatModelMesh->vertices.end());
 
   mLineIndexCount = mCoordArrowsMesh.vertices.size() +
-    mQuatArrowMesh.vertices.size();
+    mQuatArrowMesh.vertices.size() + 2 /* spring line */;
 
   /* prepare command buffer */
   if (vkResetCommandBuffer(mRenderData.rdCommandBuffer, 0) != VK_SUCCESS) {

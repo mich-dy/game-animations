@@ -1,5 +1,8 @@
 #include <string>
 
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
 
@@ -227,13 +230,15 @@ void UserInterface::createFrame(VkRenderData& renderData) {
     ImGui::SliderInt("##FOV", &renderData.rdFieldOfView, 40, 150);
   }
 
-  if (ImGui::CollapsingHeader("Angles")) {
+  if (ImGui::CollapsingHeader("Angles and Position")) {
     ImGui::Checkbox("Draw World Coordinate Arrows", &renderData.rdDrawWorldCoordArrows);
     ImGui::Checkbox("Draw Model Coordinate Arrows", &renderData.rdDrawModelCoordArrows);
 
     if (ImGui::Button("Reset Rotation and Position")) {
       renderData.rdResetAnglesAndPosition = true;
     }
+
+    ImGui::Text("Position: %s", glm::to_string(renderData.rdModelPosition).c_str());
 
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
     ImGui::Text("X Rotation");

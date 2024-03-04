@@ -60,18 +60,21 @@ void RigidBody::updatePhysics(const float deltaTime) {
     return;
   }
 
-  /* scale the velocity according to the delta time and update position */
-  glm::vec3 scaledVelocity = mVelocity * deltaTime;
-  mPosition += scaledVelocity;
+  glm::vec3 mLastFrameAcceleration = mAcceleration;
 
-  glm::vec3 realAcceleration = mAcceleration;
+  glm::vec3 scaledAccumForce = mAccumulatedForce * mInverseMass;
+  mLastFrameAcceleration += scaledAccumForce;
 
   /* scale acceleration  and add to velocity */
-  glm::vec3 scaledAcceleration = realAcceleration * deltaTime;
+  glm::vec3 scaledAcceleration = mLastFrameAcceleration * deltaTime;
   mVelocity += scaledAcceleration;
 
   /* apply damping (i.e. drag by air) */
   mVelocity *= std::pow(mDamping, deltaTime);
+
+  /* scale the velocity according to the delta time and update position */
+  glm::vec3 scaledVelocity = mVelocity * deltaTime;
+  mPosition += scaledVelocity;
 
   /* clear summed up force */
   clearAccumulatedForce();
