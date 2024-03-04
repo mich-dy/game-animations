@@ -21,7 +21,7 @@ class Model {
     void setMass(const float mass);
     void setVelocity(const glm::vec3 velo);
     void setAcceleration(const glm::vec3 accel);
-    void setDaming(const float damp);
+    void setDamping(const float damp);
 
     void addForce(const glm::vec3 force);
     /* TODO: is this needed? */

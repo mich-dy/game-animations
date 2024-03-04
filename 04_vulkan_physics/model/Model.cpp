@@ -33,7 +33,7 @@ void Model::setAcceleration(const glm::vec3 accel) {
   mRigidBody->setAcceleration(accel);
 }
 
-void Model::setDaming(const float damp) {
+void Model::setDamping(const float damp) {
   mRigidBody->setDaming(damp);
 }
 

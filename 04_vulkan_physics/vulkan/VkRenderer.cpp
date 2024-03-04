@@ -134,7 +134,7 @@ bool VkRenderer::initModel() {
   mModel->setMass(2.0f);
   mModel->setVelocity(glm::vec3(0.0f));
   mModel->setAcceleration(glm::vec3(0.0f));
-  mModel->setDaming(0.75f);
+  mModel->setDamping(0.75f);
   mModel->setPhysicsEnabled(true);
 
   return true;
