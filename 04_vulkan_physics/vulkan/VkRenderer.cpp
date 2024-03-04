@@ -749,7 +749,7 @@ bool VkRenderer::draw(const float deltaTime) {
 
   /* draw box model */
   *mQuatModelMesh = mModel->getVertexData();
-  mRenderData.rdTriangleCount += mQuatModelMesh->vertices.size() / 3;
+  mRenderData.rdTriangleCount = mQuatModelMesh->vertices.size() / 3;
   std::for_each(mQuatModelMesh->vertices.begin(), mQuatModelMesh->vertices.end(),
     [=](auto &n){
       glm::quat position = glm::quat(0.0f, n.position.x, n.position.y, n.position.z);
