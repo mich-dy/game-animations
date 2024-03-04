@@ -66,6 +66,7 @@ class VkRenderer {
 
     ArrowModel mArrowModel{};
     VkMesh mQuatArrowMesh{};
+    VkMesh mSpringLineMesh{};
 
     ForceRegistry mForceRegistry{};
 
@@ -79,7 +80,10 @@ class VkRenderer {
     glm::mat4 mRotZMat = glm::mat4(1.0f);
 
     /* initial position */
-    glm::vec3 mSpringAnchorPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 mSpring1AnchorPos = glm::vec3(1.0f, 0.0f, -1.0f);
+    glm::vec3 mSpring2AnchorPos = glm::vec3(1.0f, 0.0f, 1.0f);
+    glm::vec3 mSpring3AnchorPos = glm::vec3(-1.0f, 0.0f, 1.0f);
+
     glm::vec3 mQuatModelInitialPos = glm::vec3(1.0f, 1.0f, 2.0f);
     glm::vec3 mQuatModelPos = glm::vec3(0.0f, 0.0f, 0.0f);
 

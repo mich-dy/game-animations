@@ -108,8 +108,14 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
   std::shared_ptr<GravityForce> gravity = std::make_shared<GravityForce>(glm::vec3(0.0f, -10.0f, 0.0f));
   mForceRegistry.addEntry(mModel->getRigidBody(), gravity);
 
-  std::shared_ptr<AnchoredBungeeForce> spring = std::make_shared<AnchoredBungeeForce>(mSpringAnchorPos, 15.0f, 2.0f);
-  mForceRegistry.addEntry(mModel->getRigidBody(), spring);
+  std::shared_ptr<AnchoredBungeeForce> spring1 = std::make_shared<AnchoredBungeeForce>(mSpring1AnchorPos, 15.0f, 3.0f);
+  mForceRegistry.addEntry(mModel->getRigidBody(), spring1);
+
+  std::shared_ptr<AnchoredBungeeForce> spring2 = std::make_shared<AnchoredBungeeForce>(mSpring2AnchorPos, 15.0f, 3.0f);
+  mForceRegistry.addEntry(mModel->getRigidBody(), spring2);
+
+  std::shared_ptr<AnchoredBungeeForce> spring3 = std::make_shared<AnchoredBungeeForce>(mSpring3AnchorPos, 15.0f, 3.0f);
+  mForceRegistry.addEntry(mModel->getRigidBody(), spring3);
 
   mQuatModelMesh = std::make_unique<VkMesh>();
   Logger::log(1, "%s: model mesh storage initialized\n", __FUNCTION__);
@@ -126,9 +132,9 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 bool VkRenderer::initModel() {
   mModel->setPosition(mQuatModelInitialPos);
   mModel->setMass(2.0f);
-  //mModel->setVelocity(glm::vec3(2.5f, 5.0f, 2.0f));
-  //mModel->setAcceleration(glm::vec3(0.0f,-8.0f, 0.0f));
-  mModel->setDaming(0.9f);
+  mModel->setVelocity(glm::vec3(0.0f));
+  mModel->setAcceleration(glm::vec3(0.0f));
+  mModel->setDaming(0.75f);
   mModel->setPhysicsEnabled(true);
 
   return true;
@@ -717,15 +723,29 @@ bool VkRenderer::draw(const float deltaTime) {
   }
 
   /* add a line for the spring */
-  VkVertex springLineStart;
-  springLineStart.position = mSpringAnchorPos;
-  springLineStart.color = glm::vec3(1.0f);
   VkVertex springLineEnd;
   springLineEnd.position = mQuatModelPos;
   springLineEnd.color = glm::vec3(1.0f);
+  VkVertex spring1LineStart;
+  spring1LineStart.position = mSpring1AnchorPos;
+  spring1LineStart.color = glm::vec3(1.0f, 0.0f, 0.0f);
+  VkVertex spring2LineStart;
+  spring2LineStart.position = mSpring2AnchorPos;
+  spring2LineStart.color = glm::vec3(0.0f, 1.0f, 1.0f);
+  VkVertex spring3LineStart;
+  spring3LineStart.position = mSpring3AnchorPos;
+  spring3LineStart.color = glm::vec3(0.0f, 0.0f, 1.0f);
 
-  mAllMeshes->vertices.push_back(springLineStart);
-  mAllMeshes->vertices.push_back(springLineEnd);
+  mSpringLineMesh.vertices.clear();
+  mSpringLineMesh.vertices.push_back(spring1LineStart);
+  mSpringLineMesh.vertices.push_back(springLineEnd);
+  mSpringLineMesh.vertices.push_back(spring2LineStart);
+  mSpringLineMesh.vertices.push_back(springLineEnd);
+  mSpringLineMesh.vertices.push_back(spring3LineStart);
+  mSpringLineMesh.vertices.push_back(springLineEnd);
+
+  mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
+    mSpringLineMesh.vertices.begin(), mSpringLineMesh.vertices.end());
 
   /* draw box model */
   *mQuatModelMesh = mModel->getVertexData();
@@ -744,7 +764,7 @@ bool VkRenderer::draw(const float deltaTime) {
     mQuatModelMesh->vertices.begin(), mQuatModelMesh->vertices.end());
 
   mLineIndexCount = mCoordArrowsMesh.vertices.size() +
-    mQuatArrowMesh.vertices.size() + 2 /* spring line */;
+    mQuatArrowMesh.vertices.size() + mSpringLineMesh.vertices.size();
 
   /* prepare command buffer */
   if (vkResetCommandBuffer(mRenderData.rdCommandBuffer, 0) != VK_SUCCESS) {
