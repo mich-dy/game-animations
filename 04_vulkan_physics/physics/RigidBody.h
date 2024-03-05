@@ -14,6 +14,8 @@ class RigidBody {
     bool hasInfiniteMass();
 
     void setVelocity(const glm::vec3 velo);
+    glm::vec3 getVelocity() const;
+
     void setAcceleration(const glm::vec3 accel);
     void setDaming(const float damp);
 

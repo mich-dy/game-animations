@@ -28,7 +28,6 @@ bool RigidBody::hasInfiniteMass() {
   return false;
 }
 
-
 void RigidBody::setPosition(const glm::vec3 pos) {
   mPosition = pos;
 }
@@ -39,6 +38,10 @@ glm::vec3 RigidBody::getPosition() const {
 
 void RigidBody::setVelocity(const glm::vec3 velo) {
   mVelocity = velo;
+}
+
+glm::vec3 RigidBody::getVelocity() const {
+  return mVelocity;
 }
 
 void RigidBody::setAcceleration(const glm::vec3 accel) {

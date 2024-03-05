@@ -9,6 +9,8 @@
 #include "GravityForce.h"
 #include "AnchoredSpringForce.h"
 #include "AnchoredBungeeForce.h"
+#include "DragForce.h"
+
 #include "VkRenderer.h"
 #include "Logger.h"
 
@@ -116,6 +118,9 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 
   std::shared_ptr<AnchoredBungeeForce> spring3 = std::make_shared<AnchoredBungeeForce>(mSpring3AnchorPos, 15.0f, 3.0f);
   mForceRegistry.addEntry(mModel->getRigidBody(), spring3);
+
+  std::shared_ptr<DragForce> drag = std::make_shared<DragForce>(0.5f, 0.01f);
+  mForceRegistry.addEntry(mModel->getRigidBody(), drag);
 
   mQuatModelMesh = std::make_unique<VkMesh>();
   Logger::log(1, "%s: model mesh storage initialized\n", __FUNCTION__);
