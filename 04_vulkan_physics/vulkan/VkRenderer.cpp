@@ -7,9 +7,9 @@
 #include <vk_mem_alloc.h>
 
 #include "GravityForce.h"
+#include "DragForce.h"
 #include "AnchoredSpringForce.h"
 #include "AnchoredBungeeForce.h"
-#include "DragForce.h"
 
 #include "VkRenderer.h"
 #include "Logger.h"
@@ -110,6 +110,12 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
   std::shared_ptr<GravityForce> gravity = std::make_shared<GravityForce>(glm::vec3(0.0f, -10.0f, 0.0f));
   mForceRegistry.addEntry(mModel->getRigidBody(), gravity);
 
+  mWindForce = std::make_shared<WindForce>(glm::vec3(4.0f, 0.0f, 4.0f));
+  mForceRegistry.addEntry(mModel->getRigidBody(), mWindForce);
+
+  std::shared_ptr<DragForce> drag = std::make_shared<DragForce>(0.25f, 0.01f);
+  mForceRegistry.addEntry(mModel->getRigidBody(), drag);
+
   std::shared_ptr<AnchoredBungeeForce> spring1 = std::make_shared<AnchoredBungeeForce>(mSpring1AnchorPos, 15.0f, 3.0f);
   mForceRegistry.addEntry(mModel->getRigidBody(), spring1);
 
@@ -118,9 +124,6 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 
   std::shared_ptr<AnchoredBungeeForce> spring3 = std::make_shared<AnchoredBungeeForce>(mSpring3AnchorPos, 15.0f, 3.0f);
   mForceRegistry.addEntry(mModel->getRigidBody(), spring3);
-
-  std::shared_ptr<DragForce> drag = std::make_shared<DragForce>(0.5f, 0.01f);
-  mForceRegistry.addEntry(mModel->getRigidBody(), drag);
 
   mQuatModelMesh = std::make_unique<VkMesh>();
   Logger::log(1, "%s: model mesh storage initialized\n", __FUNCTION__);
@@ -572,14 +575,6 @@ void VkRenderer::handleMovementKeys() {
     mRenderData.rdMoveRight *= 4;
     mRenderData.rdMoveUp *= 4;
   }
-
-  if (glfwGetKey(mRenderData.rdWindow, GLFW_KEY_SPACE) == GLFW_PRESS) {
-    mRenderData.rdPhysicsEnabled = true;
-  }
-
-  if (glfwGetKey(mRenderData.rdWindow, GLFW_KEY_SPACE) == GLFW_RELEASE) {
-    mRenderData.rdPhysicsEnabled = false;
-  }
 }
 
 bool VkRenderer::draw(const float deltaTime) {
@@ -681,6 +676,7 @@ bool VkRenderer::draw(const float deltaTime) {
 
   /* update physics */
   if (mRenderData.rdPhysicsEnabled) {
+    mWindForce->enable(mRenderData.rdPhysicsWindEnabled);
     mForceRegistry.updateForces(deltaTime);
     mModel->update(deltaTime);
   }

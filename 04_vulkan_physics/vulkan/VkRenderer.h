@@ -33,6 +33,7 @@
 #include "ArrowModel.h"
 
 #include "ForceRegistry.h"
+#include "WindForce.h"
 
 #include "VkRenderData.h"
 
@@ -66,6 +67,7 @@ class VkRenderer {
     VkMesh mSpringLineMesh{};
 
     ForceRegistry mForceRegistry{};
+    std::shared_ptr<WindForce> mWindForce = nullptr;
 
     std::shared_ptr<Model> mModel = nullptr;
 

@@ -259,6 +259,17 @@ void UserInterface::createFrame(VkRenderData& renderData) {
     ImGui::SliderInt("##ROTZ", &renderData.rdRotZAngle, 0, 360);
   }
 
+  if (ImGui::CollapsingHeader("Physics")) {
+    ImGui::Checkbox("Enable Physics calculations", &renderData.rdPhysicsEnabled);
+    if (!renderData.rdPhysicsEnabled) {
+      ImGui::BeginDisabled();
+    }
+    ImGui::Checkbox("Enable Physics wind force", &renderData.rdPhysicsWindEnabled);
+    if (!renderData.rdPhysicsEnabled) {
+      ImGui::EndDisabled();
+    }
+  }
+
   ImGui::End();
 }
 

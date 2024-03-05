@@ -54,6 +54,7 @@ struct VkRenderData {
   bool rdDrawModelCoordArrows = true;
   bool rdResetAnglesAndPosition = false;
   bool rdPhysicsEnabled = false;
+  bool rdPhysicsWindEnabled = false;
 
   int rdRotXAngle = 0;
   int rdRotYAngle = 0;

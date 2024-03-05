@@ -6,7 +6,7 @@ void ForceRegistry::addEntry(const std::shared_ptr<RigidBody> body, const std::s
   mEntries.emplace(std::make_pair(body, force));
 }
 
-void ForceRegistry::deleteEntry(const std::shared_ptr<RigidBody> body, std::shared_ptr<IForceGenerator> force) {
+void ForceRegistry::deleteEntry(const std::shared_ptr<RigidBody> body, const std::shared_ptr<IForceGenerator> force) {
   mEntries.erase(std::make_pair(body, force));
 }
 
