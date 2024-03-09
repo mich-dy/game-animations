@@ -10,6 +10,7 @@
 #include "DragForce.h"
 #include "AnchoredSpringForce.h"
 #include "AnchoredBungeeForce.h"
+#include "BuoyancyForce.h"
 
 #include "VkRenderer.h"
 #include "Logger.h"
@@ -107,15 +108,46 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
     return false;
   }
 
+  mQuatModelMesh = std::make_unique<VkMesh>();
+  Logger::log(1, "%s: model mesh storage initialized\n", __FUNCTION__);
+
+  std::shared_ptr<RigidBody> anchor1 = std::make_shared<RigidBody>();
+  anchor1->setMass(-1.0f); // infinte mass, do not move
+  anchor1->setPosition(glm::vec3(1.0f, 2.0f, 1.0f));
+  anchor1->setVelocity(glm::vec3(0.0f));
+  anchor1->setAcceleration(glm::vec3(0.0f));
+  anchor1->setDaming(0.95f);
+
+  std::shared_ptr<RigidBody> anchor2 = std::make_shared<RigidBody>();
+  anchor2->setMass(-1.0f); // infinte mass, do not move
+  anchor2->setPosition(glm::vec3(-1.0f, 2.0f, 1.0f));
+  anchor2->setVelocity(glm::vec3(0.0f));
+  anchor2->setAcceleration(glm::vec3(0.0f));
+  anchor2->setDaming(0.95f);
+
   std::shared_ptr<GravityForce> gravity = std::make_shared<GravityForce>(glm::vec3(0.0f, -10.0f, 0.0f));
   mForceRegistry.addEntry(mModel->getRigidBody(), gravity);
 
   mWindForce = std::make_shared<WindForce>(glm::vec3(4.0f, 0.0f, 4.0f));
   mForceRegistry.addEntry(mModel->getRigidBody(), mWindForce);
 
+  /*
   std::shared_ptr<DragForce> drag = std::make_shared<DragForce>(0.25f, 0.01f);
   mForceRegistry.addEntry(mModel->getRigidBody(), drag);
+  */
 
+  mRigidBodyWorld.addRigidBody(anchor1);
+  mRigidBodyWorld.addRigidBody(anchor2);
+  mRigidBodyWorld.addRigidBody(mModel->getRigidBody());
+
+  mRigidBodyWorld.addCableContact(anchor1, mModel->getRigidBody(), 5.0f, 0.4f);
+  mRigidBodyWorld.addCableContact(anchor2, mModel->getRigidBody(), 5.0f, 0.4f);
+
+  /* buoyancy does not work correctly yet */
+  //std::shared_ptr<BuoyancyForce> buoyancy = std::make_shared<BuoyancyForce>(1.0f, 1.0f, 0.0f);
+  //mForceRegistry.addEntry(mModel->getRigidBody(), buoyancy);
+
+  /*
   std::shared_ptr<AnchoredBungeeForce> spring1 = std::make_shared<AnchoredBungeeForce>(mSpring1AnchorPos, 15.0f, 3.0f);
   mForceRegistry.addEntry(mModel->getRigidBody(), spring1);
 
@@ -124,9 +156,7 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 
   std::shared_ptr<AnchoredBungeeForce> spring3 = std::make_shared<AnchoredBungeeForce>(mSpring3AnchorPos, 15.0f, 3.0f);
   mForceRegistry.addEntry(mModel->getRigidBody(), spring3);
-
-  mQuatModelMesh = std::make_unique<VkMesh>();
-  Logger::log(1, "%s: model mesh storage initialized\n", __FUNCTION__);
+  */
 
   mAllMeshes = std::make_unique<VkMesh>();
   Logger::log(1, "%s: global mesh storage initialized\n", __FUNCTION__);
@@ -139,7 +169,7 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 
 bool VkRenderer::initModel() {
   mModel->setPosition(mQuatModelInitialPos);
-  mModel->setMass(2.0f);
+  mModel->setMass(10.0f);
   mModel->setVelocity(glm::vec3(0.0f));
   mModel->setAcceleration(glm::vec3(0.0f));
   mModel->setDamping(0.75f);
@@ -675,11 +705,19 @@ bool VkRenderer::draw(const float deltaTime) {
   }
 
   /* update physics */
+  mPhysicsTimer.start();
   if (mRenderData.rdPhysicsEnabled) {
+    mRigidBodyWorld.startFrame();
     mWindForce->enable(mRenderData.rdPhysicsWindEnabled);
+
     mForceRegistry.updateForces(deltaTime);
-    mModel->update(deltaTime);
+
+    mRigidBodyWorld.runPhysics(mRenderData, deltaTime);
+
+    //mModel->update(deltaTime);
   }
+  mRenderData.rdPhysicsTime = mPhysicsTimer.stop();
+
   mQuatModelPos = mModel->getPosition();
   mRenderData.rdModelPosition = mQuatModelPos;
 
@@ -723,7 +761,8 @@ bool VkRenderer::draw(const float deltaTime) {
       mQuatArrowMesh.vertices.begin(), mQuatArrowMesh.vertices.end());
   }
 
-  /* add a line for the spring */
+  /* add a line for every spring */
+  /*
   VkVertex springLineEnd;
   springLineEnd.position = mQuatModelPos;
   springLineEnd.color = glm::vec3(1.0f);
@@ -744,7 +783,23 @@ bool VkRenderer::draw(const float deltaTime) {
   mSpringLineMesh.vertices.push_back(springLineEnd);
   mSpringLineMesh.vertices.push_back(spring3LineStart);
   mSpringLineMesh.vertices.push_back(springLineEnd);
+*/
 
+  VkVertex anchor1Vertex;
+  anchor1Vertex.position = mRigidBodyWorld.getRigidBody(0)->getPosition();
+  anchor1Vertex.color = glm::vec3(0.0f, 1.0f, 0.0f);
+  VkVertex anchor2Vertex;
+  anchor2Vertex.position = mRigidBodyWorld.getRigidBody(1)->getPosition();
+  anchor2Vertex.color = glm::vec3(0.0f, 0.0f, 1.0f);
+  VkVertex cableEndVertex;
+  cableEndVertex.position = mRigidBodyWorld.getRigidBody(2)->getPosition();
+  cableEndVertex.color = glm::vec3(1.0f);
+
+  mSpringLineMesh.vertices.clear();
+  mSpringLineMesh.vertices.push_back(anchor1Vertex);
+  mSpringLineMesh.vertices.push_back(cableEndVertex);
+  mSpringLineMesh.vertices.push_back(anchor2Vertex);
+  mSpringLineMesh.vertices.push_back(cableEndVertex);
   mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
     mSpringLineMesh.vertices.begin(), mSpringLineMesh.vertices.end());
 

@@ -30,7 +30,7 @@ void AnchoredBungeeForce::updateForce(std::shared_ptr<RigidBody> body, float del
   glm::vec3 springVectorForce = glm::normalize(springVector) * springForce;
 
   if (glm::any(glm::isnan(springVectorForce))) {
-    Logger::log(1, "%s error: springVector contains a NaN value\n", __FUNCTION__);
+    Logger::log(1, "%s error: spring vector contains NaN value(s)\n", __FUNCTION__);
     return;
   }
 

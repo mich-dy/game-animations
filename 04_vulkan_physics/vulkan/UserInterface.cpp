@@ -199,6 +199,12 @@ void UserInterface::createFrame(VkRenderData& renderData) {
     ImGui::SameLine();
     ImGui::Text("ms");
 
+    ImGui::Text("Physics Calculation Time:");
+    ImGui::SameLine();
+    ImGui::Text("%s", std::to_string(renderData.rdPhysicsTime).c_str());
+    ImGui::SameLine();
+    ImGui::Text("ms");
+
     ImGui::Text("UI Generation Time:");
     ImGui::SameLine();
     ImGui::Text("%s", std::to_string(renderData.rdUIGenerateTime).c_str());
@@ -260,6 +266,8 @@ void UserInterface::createFrame(VkRenderData& renderData) {
   }
 
   if (ImGui::CollapsingHeader("Physics")) {
+    ImGui::Text("Contacts found wile contact resultion: %i", renderData.rdContactsIssued);
+
     ImGui::Checkbox("Enable Physics calculations", &renderData.rdPhysicsEnabled);
     if (!renderData.rdPhysicsEnabled) {
       ImGui::BeginDisabled();

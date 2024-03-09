@@ -9,7 +9,6 @@
 class WindForce : public IForceGenerator {
   public:
     WindForce(const glm::vec3 wind);
-    virtual ~WindForce() = default;
 
     void enable(const bool value);
     virtual void updateForce(std::shared_ptr<RigidBody> body, float deltaTime) override;

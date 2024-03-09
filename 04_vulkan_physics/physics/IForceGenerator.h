@@ -8,4 +8,5 @@
 class IForceGenerator {
   public:
     virtual void updateForce(std::shared_ptr<RigidBody> body, float deltaTime) = 0;
+    virtual ~IForceGenerator() = default;
 };

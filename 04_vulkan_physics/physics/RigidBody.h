@@ -4,7 +4,7 @@
 
 class RigidBody {
   public:
-    void updatePhysics(const float deltaTime);
+    void integrate(const float deltaTime);
 
     void setPosition(const glm::vec3 pos);
     glm::vec3 getPosition() const;
@@ -12,16 +12,18 @@ class RigidBody {
     void setMass(const float mass);
     float getMass() const;
     bool hasInfiniteMass();
+    float getInverseMass() const;
 
     void setVelocity(const glm::vec3 velo);
     glm::vec3 getVelocity() const;
 
     void setAcceleration(const glm::vec3 accel);
+    glm::vec3 getAcceleration() const;
+
     void setDaming(const float damp);
 
     void addForce(const glm::vec3 force);
     void clearAccumulatedForce();
-
 
   private:
     // using the inverse of the mass is easier (i.e., inverse zero -> infinit mass)

@@ -9,7 +9,6 @@
 class GravityForce : public IForceGenerator {
   public:
     GravityForce(const glm::vec3 gravity);
-    virtual ~GravityForce() = default;
 
     virtual void updateForce(std::shared_ptr<RigidBody> body, float deltaTime) override;
 

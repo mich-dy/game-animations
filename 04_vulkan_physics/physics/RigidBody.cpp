@@ -3,13 +3,8 @@
 
 
 void RigidBody::setMass(const float mass) {
-  if (mass == 0.0f) {
-    Logger::log(1, "%s error: mass cannot be zero\n", __FUNCTION__);
-    return;
-  }
-
   /* infinite mass */
-  if (mass < 0.0f) {
+  if (mass <= 0.0f) {
     mInverseMass = 0.0f;
     return;
   }
@@ -26,6 +21,10 @@ bool RigidBody::hasInfiniteMass() {
     return true;
   }
   return false;
+}
+
+float RigidBody::getInverseMass() const {
+  return mInverseMass;
 }
 
 void RigidBody::setPosition(const glm::vec3 pos) {
@@ -48,11 +47,16 @@ void RigidBody::setAcceleration(const glm::vec3 accel) {
   mAcceleration = accel;
 }
 
+glm::vec3 RigidBody::getAcceleration() const {
+  return mAcceleration;
+}
+
+
 void RigidBody::setDaming(const float damp) {
   mDamping = damp;
 }
 
-void RigidBody::updatePhysics(const float deltaTime) {
+void RigidBody::integrate(const float deltaTime) {
   /* infinite mass, don't do anything */
   if (mInverseMass <= 0.0f) {
     return;
@@ -80,7 +84,8 @@ void RigidBody::updatePhysics(const float deltaTime) {
   mPosition += scaledVelocity;
 
   /* clear summed up force */
-  clearAccumulatedForce();
+  // now done at the start of a frame
+  // clearAccumulatedForce();
 }
 
 void RigidBody::addForce(const glm::vec3 force) {

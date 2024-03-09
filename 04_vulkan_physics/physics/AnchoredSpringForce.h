@@ -7,7 +7,6 @@
 class AnchoredSpringForce : public IForceGenerator {
   public:
     AnchoredSpringForce(const glm::vec3 anchor, const float springConstant, const float restLength);
-    virtual ~AnchoredSpringForce() = default;
 
     virtual void updateForce(std::shared_ptr<RigidBody> body, float deltaTime) override;
 

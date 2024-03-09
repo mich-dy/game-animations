@@ -7,7 +7,6 @@
 class AnchoredBungeeForce : public IForceGenerator {
   public:
     AnchoredBungeeForce(const glm::vec3 anchor, const float springConstant, const float restLength);
-    virtual ~AnchoredBungeeForce() = default;
 
     virtual void updateForce(std::shared_ptr<RigidBody> body, float deltaTime) override;
 

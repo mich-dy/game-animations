@@ -20,7 +20,7 @@ void DragForce::updateForce(std::shared_ptr<RigidBody> body, float deltaTime) {
   glm::vec3 force = glm::normalize(velocity) * -dragCoeff;
 
   if (glm::any(glm::isnan(force))) {
-    Logger::log(1, "%s error: springVector contains a NaN value\n", __FUNCTION__);
+    Logger::log(1, "%s error: drag force vector contains NaN value(s)\n", __FUNCTION__);
     return;
   }
 

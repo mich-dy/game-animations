@@ -5,7 +5,6 @@
 class DragForce : public IForceGenerator {
   public:
     DragForce(const float linearCoeff, const float squareCoeff);
-    virtual ~DragForce() = default;
 
     virtual void updateForce(std::shared_ptr<RigidBody> body, float deltaTime) override;
 

@@ -45,14 +45,12 @@ void Model::clearAccumulatedForce() {
   mRigidBody->clearAccumulatedForce();
 }
 
-
-
 void Model::update(float deltaTime) {
   /* TODO: animations etc. */
 
   /* physics update */
   if (mPhysicsEnabled) {
-    mRigidBody->updatePhysics(deltaTime);
+    mRigidBody->integrate(deltaTime);
   }
 }
 

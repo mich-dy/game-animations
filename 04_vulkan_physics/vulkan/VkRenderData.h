@@ -41,20 +41,22 @@ struct VkRenderData {
   float rdUploadToUBOTime = 0.0f;
   float rdUIGenerateTime = 0.0f;
   float rdUIDrawTime = 0.0f;
+  float rdPhysicsTime = 0.0f;
 
   int rdMoveForward = 0;
   int rdMoveRight = 0;
   int rdMoveUp = 0;
 
-  float rdViewAzimuth = 0.0f;
-  float rdViewElevation = -15.0f;
-  glm::vec3 rdCameraWorldPosition = glm::vec3(-0.15f, 2.25f, 4.5f);
+  float rdViewAzimuth = 335.0f;
+  float rdViewElevation = -25.0f;
+  glm::vec3 rdCameraWorldPosition = glm::vec3(2.5f, 1.75f, 5.5f);
 
   bool rdDrawWorldCoordArrows = true;
   bool rdDrawModelCoordArrows = true;
   bool rdResetAnglesAndPosition = false;
   bool rdPhysicsEnabled = false;
   bool rdPhysicsWindEnabled = false;
+  unsigned int rdContactsIssued = 0;
 
   int rdRotXAngle = 0;
   int rdRotYAngle = 0;
