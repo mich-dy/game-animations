@@ -87,7 +87,7 @@ class VkRenderer {
     glm::vec3 mSpring2AnchorPos = glm::vec3(1.0f, 0.0f, 1.0f);
     glm::vec3 mSpring3AnchorPos = glm::vec3(-1.0f, 0.0f, 1.0f);
 
-    glm::vec3 mQuatModelInitialPos = glm::vec3(2.0f, 1.0f, 3.0f);
+    glm::vec3 mQuatModelInitialPos = glm::vec3(-0.5f, 0.0f, 3.0f);
     glm::vec3 mQuatModelPos = glm::vec3(0.0f, 0.0f, 0.0f);
 
     glm::vec3 mRotXAxis = glm::vec3(1.0f, 0.0f, 0.0f);

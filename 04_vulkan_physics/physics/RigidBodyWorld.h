@@ -20,7 +20,10 @@ class RigidBodyWorld {
     void runPhysics(VkRenderData& renderData, const float deltaTime);
 
     void addRigidBody(const std::shared_ptr<RigidBody> newBody);
+
     bool addCableContact(const std::shared_ptr< RigidBody > firstBody, const std::shared_ptr< RigidBody > secondBody, const float length, const float restitutionFactor);
+
+    bool addRodContact(const std::shared_ptr< RigidBody > firstBody, const std::shared_ptr< RigidBody > secondBody, const float length);
 
     std::shared_ptr<RigidBody> getRigidBody(const unsigned int index);
 

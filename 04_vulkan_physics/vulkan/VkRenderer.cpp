@@ -113,7 +113,7 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 
   std::shared_ptr<RigidBody> anchor1 = std::make_shared<RigidBody>();
   anchor1->setMass(-1.0f); // infinte mass, do not move
-  anchor1->setPosition(glm::vec3(1.0f, 2.0f, 1.0f));
+  anchor1->setPosition(glm::vec3(2.0f, 2.0f, 3.0f));
   anchor1->setVelocity(glm::vec3(0.0f));
   anchor1->setAcceleration(glm::vec3(0.0f));
   anchor1->setDaming(0.95f);
@@ -140,7 +140,7 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
   mRigidBodyWorld.addRigidBody(anchor2);
   mRigidBodyWorld.addRigidBody(mModel->getRigidBody());
 
-  mRigidBodyWorld.addCableContact(anchor1, mModel->getRigidBody(), 5.0f, 0.4f);
+  mRigidBodyWorld.addRodContact(anchor1, mModel->getRigidBody(), 3.0f);
   mRigidBodyWorld.addCableContact(anchor2, mModel->getRigidBody(), 5.0f, 0.4f);
 
   /* buoyancy does not work correctly yet */

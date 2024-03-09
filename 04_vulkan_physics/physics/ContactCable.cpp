@@ -3,10 +3,10 @@
 ContactCable::ContactCable(const float maxLength, const float restitution) : mMaxCableLength(maxLength), mCableRestitution(restitution) { }
 
 unsigned int ContactCable::addContact(std::shared_ptr<BodyContact> contact, const unsigned int contactLimit) {
-  float cableLength = getCurrentLength();
+  float currentCableLength = getCurrentLength();
 
   /* below max length, do nothing, return 0 contacts added */
-  if (cableLength < mMaxCableLength) {
+  if (currentCableLength < mMaxCableLength) {
     return 0;
   }
 
@@ -17,7 +17,7 @@ unsigned int ContactCable::addContact(std::shared_ptr<BodyContact> contact, cons
   contact->setContactNormal(contactNormal);
 
   /* amount to bounce back*/
-  contact->setInterPenetration(cableLength - mMaxCableLength);
+  contact->setInterPenetration(currentCableLength - mMaxCableLength);
   contact->setRestiutionCoeff(mCableRestitution);
 
   /* added one contact */

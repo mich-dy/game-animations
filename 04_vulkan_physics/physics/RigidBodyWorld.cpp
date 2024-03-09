@@ -3,6 +3,7 @@
 
 #include "Logger.h"
 #include "ContactCable.h"
+#include "ContactRod.h"
 
 RigidBodyWorld::RigidBodyWorld(const unsigned int maxContacts, const unsigned int numIterations) : mMaxContacts(maxContacts), mNumIterations(numIterations) {
   mResolver = std::make_shared<ContactResolver>(numIterations);
@@ -64,6 +65,20 @@ bool RigidBodyWorld::addCableContact(const std::shared_ptr<RigidBody> firstBody,
   cable->addBodies(firstBody, secondBody);
 
   mContactGenerators.emplace_back(cable);
+
+  return true;
+}
+
+bool RigidBodyWorld::addRodContact(const std::shared_ptr<RigidBody> firstBody, const std::shared_ptr<RigidBody> secondBody, const float length) {
+  if (std::find(mBodies.begin(), mBodies.end(), firstBody) == mBodies.end() || std::find(mBodies.begin(), mBodies.end(), secondBody) == mBodies.end()) {
+    Logger::log(1, "%s error: could not find the rigid bodies in mBodies vector\n", __FUNCTION__);
+    return false;
+  }
+
+  std::shared_ptr<ContactRod> rod = std::make_shared<ContactRod>(length);
+  rod->addBodies(firstBody, secondBody);
+
+  mContactGenerators.emplace_back(rod);
 
   return true;
 }
