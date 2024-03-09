@@ -266,7 +266,7 @@ void UserInterface::createFrame(VkRenderData& renderData) {
   }
 
   if (ImGui::CollapsingHeader("Physics")) {
-    ImGui::Text("Contacts found wile contact resultion: %i", renderData.rdContactsIssued);
+    ImGui::Text("Contacts found wile contact resolution: %i", renderData.rdContactsIssued);
 
     ImGui::Checkbox("Enable Physics calculations", &renderData.rdPhysicsEnabled);
     if (!renderData.rdPhysicsEnabled) {
