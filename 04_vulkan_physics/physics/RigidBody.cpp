@@ -157,7 +157,7 @@ void RigidBody::integrate(const float deltaTime) {
   mPosition += scaledVelocity;
 
   glm::vec3 scaledRotation = mRotation * deltaTime;
-  glm::quat rotationQuat = glm::quat(1.0f, scaledRotation);
+  glm::quat rotationQuat = glm::normalize(glm::quat(1.0f, scaledRotation));
   mOrientation *= rotationQuat;
 
   /* clear summed up force */

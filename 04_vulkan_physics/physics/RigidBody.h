@@ -75,7 +75,7 @@ class RigidBody {
 
     /* store inverse tensor for easier usage, in body space coords */
     //glm::mat3 mInverseInertiaTensor = glm::mat3(1.0f);
-    glm::mat3 mInverseInertiaTensor = glm::inverse(glm::mat3(0.1f));
+    glm::mat3 mInverseInertiaTensor = glm::inverse(glm::mat3(1.0f));
     /* the same tensor in world space coordinates */
     glm::mat3 mInverseInertiaTensorWorldSpace = glm::inverse(glm::mat3(1.0f));
 
