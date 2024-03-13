@@ -14,7 +14,6 @@ unsigned int ContactRod::addContact(std::shared_ptr<BodyContact> contact, const 
   contact->setBody(1, mBodies.at(1));
 
   glm::vec3 contactNormal = glm::normalize(mBodies.at(1)->getPosition() - mBodies.at(0)->getPosition());
-  contact->setContactNormal(contactNormal);
 
   /* extend or compress? */
   if (currentRodLength > mRodLength) {

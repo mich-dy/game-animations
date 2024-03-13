@@ -68,7 +68,10 @@ class VkRenderer {
     VkMesh mQuatArrowMesh{};
     VkMesh mSpringLineMesh{};
 
-    RigidBodyWorld mRigidBodyWorld = RigidBodyWorld(10,10);
+    /* TODO: configure max contacts */
+    const unsigned int NUMBER_OF_BRIDGE_POINTS = 5;
+
+    RigidBodyWorld mRigidBodyWorld = RigidBodyWorld(NUMBER_OF_BRIDGE_POINTS * 10, NUMBER_OF_BRIDGE_POINTS * 20);
 
     ForceRegistry mForceRegistry{};
     std::shared_ptr<WindForce> mWindForce = nullptr;

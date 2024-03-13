@@ -12,15 +12,18 @@ unsigned int ContactResolver::getNumUsedIterations() const {
   return mUsedIterations;
 }
 
-void ContactResolver::resolveContacts(std::vector<std::shared_ptr<BodyContact>>& contacts, const unsigned int maxContacts, const float deltaTime) {
+unsigned int ContactResolver::resolveContacts(std::vector<std::shared_ptr<BodyContact>>& contacts, const unsigned int numContacts, const float deltaTime) {
   mUsedIterations = 0;
 
   while (mUsedIterations < mNumInterations) {
+    /* TODO: heap/prio queue or similar to have the entries already sorted? */
+    /* or other ways to get the highest separating velocity? */
+
     /* find contact with max closing velocity */
     float maxValue = FLT_MAX;
-    unsigned int maxIndex = maxContacts;
+    unsigned int maxIndex = numContacts;
 
-    for (unsigned int i = 0; i < maxIndex; ++i) {
+    for (unsigned int i = 0; i < numContacts; ++i) {
       float separationVelocity = contacts.at(i)->calculateSeparatingVelocity();
       if (separationVelocity < maxValue && (separationVelocity < 0 || contacts.at(i)->getInterPenetration() > 0)) {
         maxValue = separationVelocity;
@@ -29,16 +32,19 @@ void ContactResolver::resolveContacts(std::vector<std::shared_ptr<BodyContact>>&
     }
 
     /* nothing found to resolve, return */
-    if (maxIndex == maxContacts) {
+    if (maxIndex == numContacts) {
       break;
     }
 
     /* resolve the contact between the bodies */
     contacts.at(maxIndex)->resolveContact(deltaTime);
 
-    /* and move the two bodies according to the values from contact resolving  */
+    /* and move the bodies according to the values from contact resolving  */
+    /* TODO: this is a quite expensive search, just to find the two rigid bodies.
+     * Maybe some sort of hash maps would help? */
     std::array<glm::vec3, 2> bodyMovements = contacts.at(maxIndex)->getBodyMovements();
-    for (unsigned int i = 0; i < maxContacts; ++i) {
+
+    for (unsigned int i = 0; i < numContacts; ++i) {
       if (contacts.at(i)->getBody(0) == contacts.at(maxIndex)->getBody(0)) {
         contacts.at(i)->setInterPenetration(
           contacts.at(i)->getInterPenetration() - glm::dot(bodyMovements.at(0), contacts.at(i)->getContactNormal()));
@@ -60,5 +66,6 @@ void ContactResolver::resolveContacts(std::vector<std::shared_ptr<BodyContact>>&
 
     ++mUsedIterations;
   }
+  return mUsedIterations;
 }
 

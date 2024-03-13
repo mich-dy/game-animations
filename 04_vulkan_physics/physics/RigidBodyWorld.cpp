@@ -19,6 +19,7 @@ RigidBodyWorld::RigidBodyWorld(const unsigned int maxContacts, const unsigned in
 void RigidBodyWorld::startFrame() {
   for (auto& body : mBodies) {
     body->clearAccumulatedForce();
+    body->calculateDerivedData();
   }
 }
 
@@ -38,7 +39,7 @@ void RigidBodyWorld::runPhysics(VkRenderData& renderData, const float deltaTime)
     if (!mNumIterations) {
       mResolver->setIterations(usedContacts * 2);
     }
-    mResolver->resolveContacts(mBodyContacts, usedContacts, deltaTime);
+    renderData.rdContactResolverIterations = mResolver->resolveContacts(mBodyContacts, usedContacts, deltaTime);
   }
 }
 

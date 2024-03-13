@@ -57,6 +57,7 @@ struct VkRenderData {
   bool rdPhysicsEnabled = false;
   bool rdPhysicsWindEnabled = false;
   unsigned int rdContactsIssued = 0;
+  unsigned int rdContactResolverIterations = 0;
 
   int rdRotXAngle = 0;
   int rdRotYAngle = 0;

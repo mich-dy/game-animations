@@ -111,19 +111,60 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
   mQuatModelMesh = std::make_unique<VkMesh>();
   Logger::log(1, "%s: model mesh storage initialized\n", __FUNCTION__);
 
-  std::shared_ptr<RigidBody> anchor1 = std::make_shared<RigidBody>();
-  anchor1->setMass(-1.0f); // infinte mass, do not move
-  anchor1->setPosition(glm::vec3(2.0f, 2.0f, 3.0f));
-  anchor1->setVelocity(glm::vec3(0.0f));
-  anchor1->setAcceleration(glm::vec3(0.0f));
-  anchor1->setDaming(0.95f);
+  /* bridge anchors */
+  float xPos = 2.0f;
+  for (unsigned int i = 0; i < NUMBER_OF_BRIDGE_POINTS * 2; ++i) {
+    std::shared_ptr<RigidBody> anchor = std::make_shared<RigidBody>();
+    float zPos = 0.0f;
 
-  std::shared_ptr<RigidBody> anchor2 = std::make_shared<RigidBody>();
-  anchor2->setMass(-1.0f); // infinte mass, do not move
-  anchor2->setPosition(glm::vec3(-1.0f, 2.0f, 1.0f));
-  anchor2->setVelocity(glm::vec3(0.0f));
-  anchor2->setAcceleration(glm::vec3(0.0f));
-  anchor2->setDaming(0.95f);
+    if (i % 2 == 0) {
+      xPos += 1.0f;
+      zPos = 1.0f;
+    }
+    anchor->setPosition(glm::vec3(xPos, 2.0f, zPos));
+    anchor->setMass(-1.0f); // infinte mass, do not move
+    anchor->setVelocity(glm::vec3(0.0f));
+    anchor->setAcceleration(glm::vec3(0.0f));
+    anchor->setLinearDaming(0.95f);
+
+    mRigidBodyWorld.addRigidBody(anchor);
+  }
+
+  /* plank holders */
+  xPos = 2.0f;
+  for (unsigned int i = 0; i < NUMBER_OF_BRIDGE_POINTS * 2; ++i) {
+    std::shared_ptr<RigidBody> body = std::make_shared<RigidBody>();
+    float zPos = 0.0f;
+
+    if (i % 2 == 0) {
+      xPos += 1.0f;
+      zPos = 1.0f;
+    }
+
+    body->setPosition(glm::vec3(xPos, 0.0f, zPos));
+    body->setMass(1.0f);
+    body->setVelocity(glm::vec3(0.0f));
+    body->setAcceleration(glm::vec3(0.0f));
+    body->setLinearDaming(0.95f);
+
+    mRigidBodyWorld.addRigidBody(body);
+  }
+
+  /* connecten cables from anchors to planks */
+  for (unsigned int i = 0; i < NUMBER_OF_BRIDGE_POINTS * 2; ++i) {
+    mRigidBodyWorld.addCableContact(mRigidBodyWorld.getRigidBody(i), mRigidBodyWorld.getRigidBody(i + NUMBER_OF_BRIDGE_POINTS * 2), 2.1f, 0.25f);
+  }
+
+  /* connection cables between plank holders */
+  for (unsigned int i = NUMBER_OF_BRIDGE_POINTS * 2; i < NUMBER_OF_BRIDGE_POINTS * 4 - 2; ++i) {
+    mRigidBodyWorld.addCableContact(mRigidBodyWorld.getRigidBody(i), mRigidBodyWorld.getRigidBody(i + 2), 0.75f, 0.1f);
+    //mRigidBodyWorld.addRodContact(mRigidBodyWorld.getRigidBody(i), mRigidBodyWorld.getRigidBody(i + 2), 0.75f);
+  }
+
+  /* connection rods btween planks  */
+  for (unsigned int i = NUMBER_OF_BRIDGE_POINTS * 2; i < NUMBER_OF_BRIDGE_POINTS * 4; i += 2) {
+    mRigidBodyWorld.addRodContact(mRigidBodyWorld.getRigidBody(i), mRigidBodyWorld.getRigidBody(i + 1), 0.75f);
+  }
 
   std::shared_ptr<GravityForce> gravity = std::make_shared<GravityForce>(glm::vec3(0.0f, -10.0f, 0.0f));
   mForceRegistry.addEntry(mModel->getRigidBody(), gravity);
@@ -131,18 +172,18 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
   mWindForce = std::make_shared<WindForce>(glm::vec3(4.0f, 0.0f, 4.0f));
   mForceRegistry.addEntry(mModel->getRigidBody(), mWindForce);
 
+  for (unsigned int i = 0; i < NUMBER_OF_BRIDGE_POINTS * 4; ++i) {
+   mForceRegistry.addEntry(mRigidBodyWorld.getRigidBody(i), gravity);
+   mForceRegistry.addEntry(mRigidBodyWorld.getRigidBody(i), mWindForce);
+  }
+
+  mRigidBodyWorld.addRigidBody(mModel->getRigidBody());
+  mRigidBodyWorld.addCableContact(mRigidBodyWorld.getRigidBody(NUMBER_OF_BRIDGE_POINTS * 3), mModel->getRigidBody(), 2.0f, 0.4f);
+
   /*
   std::shared_ptr<DragForce> drag = std::make_shared<DragForce>(0.25f, 0.01f);
   mForceRegistry.addEntry(mModel->getRigidBody(), drag);
   */
-
-  mRigidBodyWorld.addRigidBody(anchor1);
-  mRigidBodyWorld.addRigidBody(anchor2);
-  mRigidBodyWorld.addRigidBody(mModel->getRigidBody());
-
-  mRigidBodyWorld.addRodContact(anchor1, mModel->getRigidBody(), 3.0f);
-  mRigidBodyWorld.addCableContact(anchor2, mModel->getRigidBody(), 5.0f, 0.4f);
-
   /* buoyancy does not work correctly yet */
   //std::shared_ptr<BuoyancyForce> buoyancy = std::make_shared<BuoyancyForce>(1.0f, 1.0f, 0.0f);
   //mForceRegistry.addEntry(mModel->getRigidBody(), buoyancy);
@@ -172,7 +213,9 @@ bool VkRenderer::initModel() {
   mModel->setMass(10.0f);
   mModel->setVelocity(glm::vec3(0.0f));
   mModel->setAcceleration(glm::vec3(0.0f));
-  mModel->setDamping(0.75f);
+  mModel->setLinearDamping(0.75f);
+  mModel->setAngularDaming(0.95f);
+
   mModel->setPhysicsEnabled(true);
 
   return true;
@@ -722,11 +765,14 @@ bool VkRenderer::draw(const float deltaTime) {
   mRenderData.rdModelPosition = mQuatModelPos;
 
   /* create quaternion from angles  */
+  /*
   mQuatModelOrientation = glm::normalize(glm::quat(glm::vec3(
     glm::radians(static_cast<float>(mRenderData.rdRotXAngle)),
     glm::radians(static_cast<float>(mRenderData.rdRotYAngle)),
     glm::radians(static_cast<float>(mRenderData.rdRotZAngle))
   )));
+  */
+  mQuatModelOrientation = mModel->getOrientation();
 
   /* conjugate = same length, but opposite direction*/
   mQuatModelOrientConjugate = glm::conjugate(mQuatModelOrientation);
@@ -745,7 +791,7 @@ bool VkRenderer::draw(const float deltaTime) {
 
   mQuatArrowMesh.vertices.clear();
   if (mRenderData.rdDrawModelCoordArrows) {
-    /* draw an arrow to show quaternion orientation changes */
+    ///
     mQuatArrowMesh = mArrowModel.getVertexData();
     std::for_each(mQuatArrowMesh.vertices.begin(), mQuatArrowMesh.vertices.end(),
       [=](auto &n){
@@ -761,45 +807,55 @@ bool VkRenderer::draw(const float deltaTime) {
       mQuatArrowMesh.vertices.begin(), mQuatArrowMesh.vertices.end());
   }
 
-  /* add a line for every spring */
-  /*
-  VkVertex springLineEnd;
-  springLineEnd.position = mQuatModelPos;
-  springLineEnd.color = glm::vec3(1.0f);
-  VkVertex spring1LineStart;
-  spring1LineStart.position = mSpring1AnchorPos;
-  spring1LineStart.color = glm::vec3(1.0f, 0.0f, 0.0f);
-  VkVertex spring2LineStart;
-  spring2LineStart.position = mSpring2AnchorPos;
-  spring2LineStart.color = glm::vec3(0.0f, 1.0f, 1.0f);
-  VkVertex spring3LineStart;
-  spring3LineStart.position = mSpring3AnchorPos;
-  spring3LineStart.color = glm::vec3(0.0f, 0.0f, 1.0f);
-
   mSpringLineMesh.vertices.clear();
-  mSpringLineMesh.vertices.push_back(spring1LineStart);
-  mSpringLineMesh.vertices.push_back(springLineEnd);
-  mSpringLineMesh.vertices.push_back(spring2LineStart);
-  mSpringLineMesh.vertices.push_back(springLineEnd);
-  mSpringLineMesh.vertices.push_back(spring3LineStart);
-  mSpringLineMesh.vertices.push_back(springLineEnd);
-*/
-
   VkVertex anchor1Vertex;
-  anchor1Vertex.position = mRigidBodyWorld.getRigidBody(0)->getPosition();
+  anchor1Vertex.position = mRigidBodyWorld.getRigidBody(NUMBER_OF_BRIDGE_POINTS * 3)->getPosition();
   anchor1Vertex.color = glm::vec3(0.0f, 1.0f, 0.0f);
-  VkVertex anchor2Vertex;
-  anchor2Vertex.position = mRigidBodyWorld.getRigidBody(1)->getPosition();
-  anchor2Vertex.color = glm::vec3(0.0f, 0.0f, 1.0f);
   VkVertex cableEndVertex;
-  cableEndVertex.position = mRigidBodyWorld.getRigidBody(2)->getPosition();
+  cableEndVertex.position = mModel->getRigidBody()->getPosition();
   cableEndVertex.color = glm::vec3(1.0f);
-
-  mSpringLineMesh.vertices.clear();
   mSpringLineMesh.vertices.push_back(anchor1Vertex);
   mSpringLineMesh.vertices.push_back(cableEndVertex);
-  mSpringLineMesh.vertices.push_back(anchor2Vertex);
-  mSpringLineMesh.vertices.push_back(cableEndVertex);
+
+  /* anchor to plank */
+  for (unsigned int i = 0; i < NUMBER_OF_BRIDGE_POINTS * 2; ++i) {
+    VkVertex anchorVertex;
+    anchorVertex.position = mRigidBodyWorld.getRigidBody(i)->getPosition();
+    anchorVertex.color = glm::vec3(0.0f, 1.0f, 0.0f);
+    mSpringLineMesh.vertices.push_back(anchorVertex);
+
+    VkVertex plankVertex;
+    plankVertex.position = mRigidBodyWorld.getRigidBody(i + NUMBER_OF_BRIDGE_POINTS * 2)->getPosition();
+    plankVertex.color = glm::vec3(1.0f);
+    mSpringLineMesh.vertices.push_back(plankVertex);
+  }
+
+  /* planks */
+  for (unsigned int i = NUMBER_OF_BRIDGE_POINTS * 2; i < NUMBER_OF_BRIDGE_POINTS * 4; i += 2) {
+    VkVertex plank1Vertex;
+    plank1Vertex.position = mRigidBodyWorld.getRigidBody(i)->getPosition();
+    plank1Vertex.color = glm::vec3(1.0f, 0.0f, 0.0f);
+    mSpringLineMesh.vertices.push_back(plank1Vertex);
+
+    VkVertex plank2Vertex;
+    plank2Vertex.position = mRigidBodyWorld.getRigidBody(i + 1)->getPosition();
+    plank2Vertex.color = glm::vec3(1.0f, 0.0f, 0.0f);
+    mSpringLineMesh.vertices.push_back(plank2Vertex);
+  }
+
+  /* connectens between planks on every side */
+  for (unsigned int i = NUMBER_OF_BRIDGE_POINTS * 2; i < NUMBER_OF_BRIDGE_POINTS * 4 - 2; ++i) {
+    VkVertex plank1Vertex;
+    plank1Vertex.position = mRigidBodyWorld.getRigidBody(i)->getPosition();
+    plank1Vertex.color = glm::vec3(0.0f, 0.0f, 1.0f);
+    mSpringLineMesh.vertices.push_back(plank1Vertex);
+
+    VkVertex plank2Vertex;
+    plank2Vertex.position = mRigidBodyWorld.getRigidBody(i + 2)->getPosition();
+    plank2Vertex.color = glm::vec3(0.0f, 0.0f, 1.0f);
+    mSpringLineMesh.vertices.push_back(plank2Vertex);
+  }
+
   mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
     mSpringLineMesh.vertices.begin(), mSpringLineMesh.vertices.end());
 

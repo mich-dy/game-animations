@@ -17,6 +17,15 @@ glm::vec3 Model::getPosition() const {
   return mRigidBody->getPosition();
 }
 
+void Model::setOrientation(const glm::quat orient) {
+  mRigidBody->setOrientation(orient);
+}
+
+glm::quat Model::getOrientation() const {
+  return mRigidBody->getOrientation();
+}
+
+
 void Model::setPhysicsEnabled(const bool value) {
   mPhysicsEnabled = value;
 }
@@ -33,8 +42,12 @@ void Model::setAcceleration(const glm::vec3 accel) {
   mRigidBody->setAcceleration(accel);
 }
 
-void Model::setDamping(const float damp) {
-  mRigidBody->setDaming(damp);
+void Model::setLinearDamping(const float damp) {
+  mRigidBody->setLinearDaming(damp);
+}
+
+void Model::setAngularDaming(const float damp) {
+  mRigidBody->setAngularDamping(damp);
 }
 
 void Model::addForce(const glm::vec3 force) {
