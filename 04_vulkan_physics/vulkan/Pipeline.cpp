@@ -7,62 +7,73 @@
 #include "Shader.h"
 
 bool Pipeline::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout, VkPipeline& pipeline, VkPrimitiveTopology topology, std::string vertexShaderFilename, std::string fragmentShaderFilename) {
-    /* shader */
-    VkShaderModule vertexModule = Shader::loadShader(renderData.rdVkbDevice.device, vertexShaderFilename);
-    VkShaderModule fragmentModule = Shader::loadShader(renderData.rdVkbDevice.device, fragmentShaderFilename);
+  /* shader */
+  VkShaderModule vertexModule = Shader::loadShader(renderData.rdVkbDevice.device, vertexShaderFilename);
+  VkShaderModule fragmentModule = Shader::loadShader(renderData.rdVkbDevice.device, fragmentShaderFilename);
 
-    if (vertexModule == VK_NULL_HANDLE || fragmentModule == VK_NULL_HANDLE) {
-        Logger::log(1, "%s error: could not load shaders\n", __FUNCTION__);
-        return false;
-    }
+  if (vertexModule == VK_NULL_HANDLE || fragmentModule == VK_NULL_HANDLE) {
+      Logger::log(1, "%s error: could not load shaders\n", __FUNCTION__);
+      return false;
+  }
 
-    VkPipelineShaderStageCreateInfo vertexStageInfo{};
-    vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertexStageInfo.module = vertexModule;
-    vertexStageInfo.pName = "main";
+  VkPipelineShaderStageCreateInfo vertexStageInfo{};
+  vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+  vertexStageInfo.module = vertexModule;
+  vertexStageInfo.pName = "main";
 
-    VkPipelineShaderStageCreateInfo fragmentStageInfo{};
-    fragmentStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragmentStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragmentStageInfo.module = fragmentModule;
-    fragmentStageInfo.pName = "main";
+  VkPipelineShaderStageCreateInfo fragmentStageInfo{};
+  fragmentStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  fragmentStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+  fragmentStageInfo.module = fragmentModule;
+  fragmentStageInfo.pName = "main";
 
-    VkPipelineShaderStageCreateInfo shaderStagesInfo[] = { vertexStageInfo, fragmentStageInfo };
+  std::vector<VkPipelineShaderStageCreateInfo> shaderStagesInfo;
+  shaderStagesInfo.push_back(vertexStageInfo);
+  shaderStagesInfo.push_back(fragmentStageInfo);
 
-    /* assemble the graphics pipeline itself */
+  /* assemble the graphics pipeline itself */
+  VkVertexInputBindingDescription mainBinding{};
+  mainBinding.binding = 0;
+  mainBinding.stride = sizeof(VkVertex);
+  mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    VkVertexInputBindingDescription mainBinding{};
-    mainBinding.binding = 0;
-    mainBinding.stride = sizeof(VkVertex);
-    mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+  VkVertexInputAttributeDescription positionAttribute{};
+  positionAttribute.binding = 0;
+  positionAttribute.location = 0;
+  positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  positionAttribute.offset = offsetof(VkVertex, position);
 
-    VkVertexInputAttributeDescription positionAttribute{};
-    positionAttribute.binding = 0;
-    positionAttribute.location = 0;
-    positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    positionAttribute.offset = offsetof(VkVertex, position);
+  VkVertexInputAttributeDescription colorAttribute{};
+  colorAttribute.binding = 0;
+  colorAttribute.location = 1;
+  colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  colorAttribute.offset = offsetof(VkVertex, color);
 
-    VkVertexInputAttributeDescription colorAttribute{};
-    colorAttribute.binding = 0;
-    colorAttribute.location = 1;
-    colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    colorAttribute.offset = offsetof(VkVertex, color);
+  VkVertexInputAttributeDescription normalAttribute{};
+  normalAttribute.binding = 0;
+  normalAttribute.location = 2;
+  normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  normalAttribute.offset = offsetof(VkVertex, normal);
 
-    VkVertexInputAttributeDescription uvAttribute{};
-    uvAttribute.binding = 0;
-    uvAttribute.location = 2;
-    uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
-    uvAttribute.offset = offsetof(VkVertex, uv);
+  VkVertexInputAttributeDescription uvAttribute{};
+  uvAttribute.binding = 0;
+  uvAttribute.location = 3;
+  uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+  uvAttribute.offset = offsetof(VkVertex, uv);
 
-  VkVertexInputAttributeDescription attributes[] = { positionAttribute, colorAttribute, uvAttribute };
+  std::vector<VkVertexInputAttributeDescription> attributes;
+  attributes.push_back(positionAttribute);
+  attributes.push_back(colorAttribute);
+  attributes.push_back(normalAttribute);
+  attributes.push_back(uvAttribute);
 
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
   vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertexInputInfo.vertexBindingDescriptionCount = 1;
   vertexInputInfo.pVertexBindingDescriptions = &mainBinding;
-  vertexInputInfo.vertexAttributeDescriptionCount = 3;
-  vertexInputInfo.pVertexAttributeDescriptions = attributes;
+  vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+  vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
 
   VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
   inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -139,8 +150,8 @@ bool Pipeline::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout, 
 
   VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
   pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-  pipelineCreateInfo.stageCount = 2;
-  pipelineCreateInfo.pStages = shaderStagesInfo;
+  pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStagesInfo.size());
+  pipelineCreateInfo.pStages = shaderStagesInfo.data();
   pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
   pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
   pipelineCreateInfo.pViewportState = &viewportStateInfo;

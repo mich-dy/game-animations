@@ -10,10 +10,14 @@
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 
+/* PCT -> position, color, texture */
 struct VkVertex {
   glm::vec3 position;
   glm::vec3 color;
+  glm::vec3 normal;
   glm::vec2 uv;
+  VkVertex(){};
+  VkVertex(glm::vec3 pos, glm::vec3 col, glm::vec3 norm, glm::vec2 uvPos) : position(pos), color(col), normal(norm), uv(uvPos) {};
 };
 
 struct VkMesh {
@@ -32,6 +36,7 @@ struct VkRenderData {
   int rdHeight = 0;
 
   unsigned int rdTriangleCount = 0;
+  unsigned int rdFlatTriangleCount = 0;
 
   int rdFieldOfView = 60;
 
@@ -59,11 +64,8 @@ struct VkRenderData {
   unsigned int rdContactsIssued = 0;
   unsigned int rdContactResolverIterations = 0;
 
-  int rdRotXAngle = 0;
-  int rdRotYAngle = 0;
-  int rdRotZAngle = 0;
-
-  glm::vec3 rdModelPosition = glm::vec3(0.0f);
+  glm::vec3 rdBoxModelPosition = glm::vec3(0.0f);
+  glm::vec3 rdSphereModelPosition = glm::vec3(0.0f);
 
   VmaAllocator rdAllocator = nullptr;
 
@@ -88,6 +90,7 @@ struct VkRenderData {
   VkPipelineLayout rdPipelineLayout = VK_NULL_HANDLE;
   VkPipeline rdBasicPipeline = VK_NULL_HANDLE;
   VkPipeline rdLinePipeline = VK_NULL_HANDLE;
+  VkPipeline rdFlatPipeline = VK_NULL_HANDLE;
 
   VkCommandPool rdCommandPool = VK_NULL_HANDLE;
   VkCommandBuffer rdCommandBuffer = VK_NULL_HANDLE;

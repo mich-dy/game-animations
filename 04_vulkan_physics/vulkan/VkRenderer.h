@@ -28,9 +28,10 @@
 #include "VertexBuffer.h"
 #include "UserInterface.h"
 #include "Camera.h"
-#include "Model.h"
+#include "BoxModel.h"
 #include "CoordArrowsModel.h"
 #include "ArrowModel.h"
+#include "SphereModel.h"
 
 #include "RigidBody.h"
 #include "RigidBodyWorld.h"
@@ -66,6 +67,7 @@ class VkRenderer {
 
     ArrowModel mArrowModel{};
     VkMesh mQuatArrowMesh{};
+    VkMesh mSphereArrowMesh{};
     VkMesh mSpringLineMesh{};
 
     /* TODO: configure max contacts */
@@ -76,10 +78,14 @@ class VkRenderer {
     ForceRegistry mForceRegistry{};
     std::shared_ptr<WindForce> mWindForce = nullptr;
 
-    std::shared_ptr<Model> mModel = nullptr;
+    std::shared_ptr<BoxModel> mBoxModel = nullptr;
     std::unique_ptr<VkMesh> mQuatModelMesh = nullptr;
 
+    std::shared_ptr<SphereModel> mSphereModel = nullptr;
+    std::shared_ptr<VkMesh> mSphereModelMesh = nullptr;
+
     std::unique_ptr<VkMesh> mAllMeshes = nullptr;
+
     unsigned int mLineIndexCount = 0;
 
     glm::mat4 mRotYMat = glm::mat4(1.0f);
@@ -99,6 +105,12 @@ class VkRenderer {
 
     glm::quat mQuatModelOrientation = glm::quat();
     glm::quat mQuatModelOrientConjugate = glm::quat();
+
+    glm::vec3 mSphereModelInitialPos = glm::vec3(-0.5f, 0.0f, -3.0f);
+    glm::vec3 mSphereModelPos = glm::vec3(0.0f, 0.0f, 0.0f);
+
+    glm::quat mSphereModelOrientation = glm::quat();
+    glm::quat mSphereModelOrientConjugate = glm::quat();
 
     bool mMouseLock = false;
     int mMouseXPos = 0;
@@ -135,6 +147,7 @@ class VkRenderer {
     bool createPipelineLayout();
     bool createBasicPipeline();
     bool createLinePipeline();
+    bool createFlatPipeline();
     bool createFramebuffer();
     bool createCommandPool();
     bool createCommandBuffer();

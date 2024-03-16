@@ -1,16 +1,19 @@
 #include "PipelineLayout.h"
 #include "Logger.h"
 
+#include <vector>
 #include <VkBootstrap.h>
 
 bool PipelineLayout::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout) {
 
-  VkDescriptorSetLayout layouts [] = { renderData.rdTextureDescriptorLayout , renderData.rdUBODescriptorLayout };
+  std::vector<VkDescriptorSetLayout> layouts;
+  layouts.push_back(renderData.rdTextureDescriptorLayout);
+  layouts.push_back(renderData.rdUBODescriptorLayout);
 
   VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
   pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pipelineLayoutInfo.setLayoutCount = 2;
-  pipelineLayoutInfo.pSetLayouts = layouts;
+  pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
+  pipelineLayoutInfo.pSetLayouts = layouts.data();
   pipelineLayoutInfo.pushConstantRangeCount = 0;
 
   if (vkCreatePipelineLayout(renderData.rdVkbDevice.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {

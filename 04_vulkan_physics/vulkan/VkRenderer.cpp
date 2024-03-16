@@ -90,6 +90,10 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
     return false;
   }
 
+  if (!createFlatPipeline()) {
+    return false;
+  }
+
   if (!createFramebuffer()) {
     return false;
   }
@@ -102,7 +106,12 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
     return false;
   }
 
-  mModel = std::make_shared<Model>();
+  mBoxModel = std::make_shared<BoxModel>();
+  Logger::log(1, "%s: box model initialized\n", __FUNCTION__);
+
+  mSphereModel = std::make_shared<SphereModel>(0.75f, 12, 24, glm::vec3(0.1f, 0.6f, 0.3f));
+  Logger::log(1, "%s: sphere model initialized\n", __FUNCTION__);
+
   if (!initModel()) {
     Logger::log(1, "%s error: model init failed\n", __FUNCTION__);
     return false;
@@ -110,6 +119,10 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 
   mQuatModelMesh = std::make_unique<VkMesh>();
   Logger::log(1, "%s: model mesh storage initialized\n", __FUNCTION__);
+
+  mSphereModelMesh = std::make_unique<VkMesh>();
+  Logger::log(1, "%s: sphere model mesh storage initialized\n", __FUNCTION__);
+
 
   /* bridge anchors */
   float xPos = 2.0f;
@@ -167,36 +180,41 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
   }
 
   std::shared_ptr<GravityForce> gravity = std::make_shared<GravityForce>(glm::vec3(0.0f, -10.0f, 0.0f));
-  mForceRegistry.addEntry(mModel->getRigidBody(), gravity);
+  mForceRegistry.addEntry(mBoxModel->getRigidBody(), gravity);
+  mForceRegistry.addEntry(mSphereModel->getRigidBody(), gravity);
 
   mWindForce = std::make_shared<WindForce>(glm::vec3(4.0f, 0.0f, 4.0f));
-  mForceRegistry.addEntry(mModel->getRigidBody(), mWindForce);
+  mForceRegistry.addEntry(mBoxModel->getRigidBody(), mWindForce);
+  mForceRegistry.addEntry(mSphereModel->getRigidBody(), mWindForce);
 
   for (unsigned int i = 0; i < NUMBER_OF_BRIDGE_POINTS * 4; ++i) {
    mForceRegistry.addEntry(mRigidBodyWorld.getRigidBody(i), gravity);
    mForceRegistry.addEntry(mRigidBodyWorld.getRigidBody(i), mWindForce);
   }
 
-  mRigidBodyWorld.addRigidBody(mModel->getRigidBody());
-  mRigidBodyWorld.addCableContact(mRigidBodyWorld.getRigidBody(NUMBER_OF_BRIDGE_POINTS * 3), mModel->getRigidBody(), 2.0f, 0.4f);
+  mRigidBodyWorld.addRigidBody(mBoxModel->getRigidBody());
+  mRigidBodyWorld.addCableContact(mRigidBodyWorld.getRigidBody(NUMBER_OF_BRIDGE_POINTS * 3 - 1), mBoxModel->getRigidBody(), 2.0f, 0.4f);
+
+  mRigidBodyWorld.addRigidBody(mSphereModel->getRigidBody());
+  mRigidBodyWorld.addCableContact(mRigidBodyWorld.getRigidBody(NUMBER_OF_BRIDGE_POINTS * 3), mSphereModel->getRigidBody(), 2.5f, 0.8f);
 
   /*
   std::shared_ptr<DragForce> drag = std::make_shared<DragForce>(0.25f, 0.01f);
-  mForceRegistry.addEntry(mModel->getRigidBody(), drag);
+  mForceRegistry.addEntry(mBoxModel->getRigidBody(), drag);
   */
   /* buoyancy does not work correctly yet */
   //std::shared_ptr<BuoyancyForce> buoyancy = std::make_shared<BuoyancyForce>(1.0f, 1.0f, 0.0f);
-  //mForceRegistry.addEntry(mModel->getRigidBody(), buoyancy);
+  //mForceRegistry.addEntry(mBoxModel->getRigidBody(), buoyancy);
 
   /*
   std::shared_ptr<AnchoredBungeeForce> spring1 = std::make_shared<AnchoredBungeeForce>(mSpring1AnchorPos, 15.0f, 3.0f);
-  mForceRegistry.addEntry(mModel->getRigidBody(), spring1);
+  mForceRegistry.addEntry(mBoxModel->getRigidBody(), spring1);
 
   std::shared_ptr<AnchoredBungeeForce> spring2 = std::make_shared<AnchoredBungeeForce>(mSpring2AnchorPos, 15.0f, 3.0f);
-  mForceRegistry.addEntry(mModel->getRigidBody(), spring2);
+  mForceRegistry.addEntry(mBoxModel->getRigidBody(), spring2);
 
   std::shared_ptr<AnchoredBungeeForce> spring3 = std::make_shared<AnchoredBungeeForce>(mSpring3AnchorPos, 15.0f, 3.0f);
-  mForceRegistry.addEntry(mModel->getRigidBody(), spring3);
+  mForceRegistry.addEntry(mBoxModel->getRigidBody(), spring3);
   */
 
   mAllMeshes = std::make_unique<VkMesh>();
@@ -209,14 +227,23 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 }
 
 bool VkRenderer::initModel() {
-  mModel->setPosition(mQuatModelInitialPos);
-  mModel->setMass(10.0f);
-  mModel->setVelocity(glm::vec3(0.0f));
-  mModel->setAcceleration(glm::vec3(0.0f));
-  mModel->setLinearDamping(0.75f);
-  mModel->setAngularDaming(0.95f);
+  mBoxModel->setPosition(mQuatModelInitialPos);
+  mBoxModel->setMass(5.0f);
+  mBoxModel->setVelocity(glm::vec3(0.0f));
+  mBoxModel->setAcceleration(glm::vec3(0.0f));
+  mBoxModel->setLinearDamping(0.75f);
+  mBoxModel->setAngularDaming(0.5f);
 
-  mModel->setPhysicsEnabled(true);
+  mBoxModel->setPhysicsEnabled(true);
+
+  mSphereModel->setPosition(mSphereModelInitialPos);
+  mSphereModel->setMass(4.0f);
+  mSphereModel->setVelocity(glm::vec3(0.0f));
+  mSphereModel->setAcceleration(glm::vec3(0.0f));
+  mSphereModel->setLinearDamping(0.75f);
+  mSphereModel->setAngularDaming(0.4f);
+
+  mSphereModel->setPhysicsEnabled(true);
 
   return true;
 }
@@ -441,6 +468,16 @@ bool VkRenderer::createLinePipeline() {
   return true;
 }
 
+bool VkRenderer::createFlatPipeline() {
+  std::string vertexShaderFile = "shader/flat.vert.spv";
+  std::string fragmentShaderFile = "shader/flat.frag.spv";
+  if (!Pipeline::init(mRenderData, mRenderData.rdPipelineLayout, mRenderData.rdFlatPipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vertexShaderFile, fragmentShaderFile)) {
+    Logger::log(1, "%s error: could not init flat shader pipeline\n", __FUNCTION__);
+    return false;
+  }
+  return true;
+}
+
 bool VkRenderer::createFramebuffer() {
   if (!Framebuffer::init(mRenderData)) {
     Logger::log(1, "%s error: could not init framebuffer\n", __FUNCTION__);
@@ -512,6 +549,7 @@ void VkRenderer::cleanup() {
   CommandBuffer::cleanup(mRenderData, mRenderData.rdCommandBuffer);
   CommandPool::cleanup(mRenderData);
   Framebuffer::cleanup(mRenderData);
+  Pipeline::cleanup(mRenderData, mRenderData.rdFlatPipeline);
   Pipeline::cleanup(mRenderData, mRenderData.rdLinePipeline);
   Pipeline::cleanup(mRenderData, mRenderData.rdBasicPipeline);
   PipelineLayout::cleanup(mRenderData, mRenderData.rdPipelineLayout);
@@ -738,10 +776,6 @@ bool VkRenderer::draw(const float deltaTime) {
   if (mRenderData.rdResetAnglesAndPosition) {
     mRenderData.rdResetAnglesAndPosition = false;
 
-    mRenderData.rdRotXAngle = 0;
-    mRenderData.rdRotYAngle = 0;
-    mRenderData.rdRotZAngle = 0;
-
     mQuatModelOrientation = glm::quat();
 
     initModel();
@@ -756,26 +790,23 @@ bool VkRenderer::draw(const float deltaTime) {
     mForceRegistry.updateForces(deltaTime);
 
     mRigidBodyWorld.runPhysics(mRenderData, deltaTime);
-
-    //mModel->update(deltaTime);
   }
+
   mRenderData.rdPhysicsTime = mPhysicsTimer.stop();
 
-  mQuatModelPos = mModel->getPosition();
-  mRenderData.rdModelPosition = mQuatModelPos;
 
-  /* create quaternion from angles  */
-  /*
-  mQuatModelOrientation = glm::normalize(glm::quat(glm::vec3(
-    glm::radians(static_cast<float>(mRenderData.rdRotXAngle)),
-    glm::radians(static_cast<float>(mRenderData.rdRotYAngle)),
-    glm::radians(static_cast<float>(mRenderData.rdRotZAngle))
-  )));
-  */
-  mQuatModelOrientation = mModel->getOrientation();
+  mQuatModelPos = mBoxModel->getPosition();
+  mRenderData.rdBoxModelPosition = mQuatModelPos;
 
+  mQuatModelOrientation = mBoxModel->getOrientation();
   /* conjugate = same length, but opposite direction*/
   mQuatModelOrientConjugate = glm::conjugate(mQuatModelOrientation);
+
+  mSphereModelPos = mSphereModel->getPosition();
+  mRenderData.rdSphereModelPosition = mSphereModelPos;
+
+  mSphereModelOrientation = mSphereModel->getOrientation();
+  mSphereModelOrientConjugate = glm::conjugate(mSphereModelOrientation);
 
   /* draw a static coordinate system */
   mCoordArrowsMesh.vertices.clear();
@@ -790,6 +821,7 @@ bool VkRenderer::draw(const float deltaTime) {
   }
 
   mQuatArrowMesh.vertices.clear();
+  mSphereArrowMesh.vertices.clear();
   if (mRenderData.rdDrawModelCoordArrows) {
     ///
     mQuatArrowMesh = mArrowModel.getVertexData();
@@ -802,17 +834,40 @@ bool VkRenderer::draw(const float deltaTime) {
         n.position.y = newPosition.y;
         n.position.z = newPosition.z;
         n.position += mQuatModelPos;
+
     });
     mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
       mQuatArrowMesh.vertices.begin(), mQuatArrowMesh.vertices.end());
+
+    mSphereArrowMesh = mArrowModel.getVertexData();
+    std::for_each(mSphereArrowMesh.vertices.begin(), mSphereArrowMesh.vertices.end(),
+      [=](auto &n){
+        glm::quat position = glm::quat(0.0f, n.position.x, n.position.y, n.position.z);
+        glm::quat newPosition =
+          mSphereModelOrientation * position * mSphereModelOrientConjugate;
+        n.position.x = newPosition.x;
+        n.position.y = newPosition.y;
+        n.position.z = newPosition.z;
+        n.position += mSphereModelPos;
+
+    });
+    mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
+      mSphereArrowMesh.vertices.begin(), mSphereArrowMesh.vertices.end());
   }
 
   mSpringLineMesh.vertices.clear();
   VkVertex anchor1Vertex;
-  anchor1Vertex.position = mRigidBodyWorld.getRigidBody(NUMBER_OF_BRIDGE_POINTS * 3)->getPosition();
+  anchor1Vertex.position = mRigidBodyWorld.getRigidBody(NUMBER_OF_BRIDGE_POINTS * 3 - 1)->getPosition();
   anchor1Vertex.color = glm::vec3(0.0f, 1.0f, 0.0f);
   VkVertex cableEndVertex;
-  cableEndVertex.position = mModel->getRigidBody()->getPosition();
+  cableEndVertex.position = mBoxModel->getRigidBody()->getPosition();
+  cableEndVertex.color = glm::vec3(1.0f);
+  mSpringLineMesh.vertices.push_back(anchor1Vertex);
+  mSpringLineMesh.vertices.push_back(cableEndVertex);
+
+  anchor1Vertex.position = mRigidBodyWorld.getRigidBody(NUMBER_OF_BRIDGE_POINTS * 3)->getPosition();
+  anchor1Vertex.color = glm::vec3(0.0f, 1.0f, 0.0f);
+  cableEndVertex.position = mSphereModel->getRigidBody()->getPosition();
   cableEndVertex.color = glm::vec3(1.0f);
   mSpringLineMesh.vertices.push_back(anchor1Vertex);
   mSpringLineMesh.vertices.push_back(cableEndVertex);
@@ -860,7 +915,7 @@ bool VkRenderer::draw(const float deltaTime) {
     mSpringLineMesh.vertices.begin(), mSpringLineMesh.vertices.end());
 
   /* draw box model */
-  *mQuatModelMesh = mModel->getVertexData();
+  *mQuatModelMesh = mBoxModel->getVertexData();
   mRenderData.rdTriangleCount = mQuatModelMesh->vertices.size() / 3;
   std::for_each(mQuatModelMesh->vertices.begin(), mQuatModelMesh->vertices.end(),
     [=](auto &n){
@@ -871,12 +926,35 @@ bool VkRenderer::draw(const float deltaTime) {
       n.position.y = newPosition.y;
       n.position.z = newPosition.z;
       n.position  += mQuatModelPos;
+
+      glm::mat3 normalMat = glm::transpose(glm::mat3_cast(mQuatModelOrientConjugate));
+      n.normal = glm::normalize(normalMat * n.normal);
   });
   mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
     mQuatModelMesh->vertices.begin(), mQuatModelMesh->vertices.end());
 
+  /* draw sphere */
+  *mSphereModelMesh = mSphereModel->getVertexData();
+  mRenderData.rdFlatTriangleCount = mSphereModelMesh->vertices.size() / 3;
+  std::for_each(mSphereModelMesh->vertices.begin(), mSphereModelMesh->vertices.end(),
+    [=](auto &n){
+      glm::quat position = glm::quat(0.0f, n.position.x, n.position.y, n.position.z);
+      glm::quat newPosition =
+        mSphereModelOrientation * position * mSphereModelOrientConjugate;
+      n.position.x = newPosition.x;
+      n.position.y = newPosition.y;
+      n.position.z = newPosition.z;
+      n.position  += mSphereModelPos;
+
+      glm::mat3 normalMat = glm::transpose(glm::mat3_cast(mSphereModelOrientConjugate));
+      n.normal = glm::normalize(normalMat * n.normal);
+  });
+  mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
+    mSphereModelMesh->vertices.begin(), mSphereModelMesh->vertices.end());
+
+  /* count line start in vertex buffer */
   mLineIndexCount = mCoordArrowsMesh.vertices.size() +
-    mQuatArrowMesh.vertices.size() + mSpringLineMesh.vertices.size();
+    mQuatArrowMesh.vertices.size() + mSphereArrowMesh.vertices.size() + mSpringLineMesh.vertices.size();
 
   /* prepare command buffer */
   if (vkResetCommandBuffer(mRenderData.rdCommandBuffer, 0) != VK_SUCCESS) {
@@ -919,9 +997,15 @@ bool VkRenderer::draw(const float deltaTime) {
     vkCmdDraw(mRenderData.rdCommandBuffer, mLineIndexCount, 1, 0, 0);
   }
 
-  /* draw model last */
+  /* draw models last, after lines */
+
+  /* draw textured models */
   vkCmdBindPipeline(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdBasicPipeline);
   vkCmdDraw(mRenderData.rdCommandBuffer, mRenderData.rdTriangleCount * 3, 1, mLineIndexCount, 0);
+
+  /* draw flat models */
+  vkCmdBindPipeline(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdFlatPipeline);
+  vkCmdDraw(mRenderData.rdCommandBuffer, mRenderData.rdFlatTriangleCount * 3, 1, mLineIndexCount + mRenderData.rdTriangleCount * 3, 0);
 
   // imgui overlay
   mUIGenerateTimer.start();

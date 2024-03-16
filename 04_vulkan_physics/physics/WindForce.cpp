@@ -20,6 +20,7 @@ void WindForce::updateForce(std::shared_ptr<RigidBody> body, float deltaTime) {
 
   if (mWindEnabled) {
     body->addForce(mWindAmount * body->getMass());
-    body->addForceToBodyPoint(mWindAmount, body->getPosition() - glm::vec3(0.0f, 0.5f, 0.0f));
+    body->addForceToBodyPoint(mWindAmount, body->getPosition() + glm::vec3(0.0f, 0.5f, 0.0f));
+    //body->addForceToWorldPoint(mWindAmount, body->getPosition() + glm::vec3(0.0f, 0.5f, 0.0f));
   }
 }

@@ -154,82 +154,32 @@ void UserInterface::createFrame(VkRenderData& renderData) {
   /* make an averge value to avoid jumps */
   mFramesPerSecond = (mAveragingAlpha * mFramesPerSecond) + (1.0f - mAveragingAlpha) * newFps;
 
-  ImGui::Text("FPS:");
-  ImGui::SameLine();
-  ImGui::Text("%s", std::to_string(mFramesPerSecond).c_str());
+  ImGui::Text("FPS: %s", std::to_string(mFramesPerSecond).c_str());
 
   if (ImGui::CollapsingHeader("Info")) {
-    ImGui::Text("Triangles:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdTriangleCount).c_str());
+    ImGui::Text("Triangles:             %s", std::to_string(renderData.rdTriangleCount + renderData.rdFlatTriangleCount).c_str());
 
     std::string windowDims = std::to_string(renderData.rdWidth) + "x" + std::to_string(renderData.rdHeight);
-    ImGui::Text("Window Dimensions:");
-    ImGui::SameLine();
-    ImGui::Text("%s", windowDims.c_str());
+    ImGui::Text("Window Dimensions:     %s", windowDims.c_str());
 
     std::string imgWindowPos = std::to_string(static_cast<int>(ImGui::GetWindowPos().x)) + "/" + std::to_string(static_cast<int>(ImGui::GetWindowPos().y));
-    ImGui::Text("ImGui Window Position:");
-    ImGui::SameLine();
-    ImGui::Text("%s", imgWindowPos.c_str());
+    ImGui::Text("ImGui Window Position: %s", imgWindowPos.c_str());
   }
 
   if (ImGui::CollapsingHeader("Timers")) {
-    ImGui::Text("Frame Time:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdFrameTime).c_str());
-    ImGui::SameLine();
-    ImGui::Text("ms");
-
-    ImGui::Text("Model Upload Time:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdUploadToVBOTime).c_str());
-    ImGui::SameLine();
-    ImGui::Text("ms");
-
-    ImGui::Text("Matrix Generation Time:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdMatrixGenerateTime).c_str());
-    ImGui::SameLine();
-    ImGui::Text("ms");
-
-    ImGui::Text("Matrix Upload Time:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdUploadToUBOTime).c_str());
-    ImGui::SameLine();
-    ImGui::Text("ms");
-
-    ImGui::Text("Physics Calculation Time:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdPhysicsTime).c_str());
-    ImGui::SameLine();
-    ImGui::Text("ms");
-
-    ImGui::Text("UI Generation Time:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdUIGenerateTime).c_str());
-    ImGui::SameLine();
-    ImGui::Text("ms");
-
-    ImGui::Text("UI Draw Time:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdUIDrawTime).c_str());
-    ImGui::SameLine();
-    ImGui::Text("ms");
+    ImGui::Text("Frame Time:               %s ms", std::to_string(renderData.rdFrameTime).c_str());
+    ImGui::Text("Model Upload Time:        %s ms", std::to_string(renderData.rdUploadToVBOTime).c_str());
+    ImGui::Text("Matrix Generation Time:   %s ms", std::to_string(renderData.rdMatrixGenerateTime).c_str());
+    ImGui::Text("Matrix Upload Time:       %s ms", std::to_string(renderData.rdUploadToUBOTime).c_str());
+    ImGui::Text("Physics Calculation Time: %s ms", std::to_string(renderData.rdPhysicsTime).c_str());
+    ImGui::Text("UI Generation Time:       %s ms", std::to_string(renderData.rdUIGenerateTime).c_str());
+    ImGui::Text("UI Draw Time:             %s ms", std::to_string(renderData.rdUIDrawTime).c_str());
   }
 
   if (ImGui::CollapsingHeader("Camera")) {
-    ImGui::Text("Camera Position:");
-    ImGui::SameLine();
-    ImGui::Text("%s", glm::to_string(renderData.rdCameraWorldPosition).c_str());
-
-    ImGui::Text("View Azimuth:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdViewAzimuth).c_str());
-
-    ImGui::Text("View Elevation:");
-    ImGui::SameLine();
-    ImGui::Text("%s", std::to_string(renderData.rdViewElevation).c_str());
+    ImGui::Text("Camera Position: %s", glm::to_string(renderData.rdCameraWorldPosition).c_str());
+    ImGui::Text("View Azimuth:    %s", std::to_string(renderData.rdViewAzimuth).c_str());
+    ImGui::Text("View Elevation:  %s", std::to_string(renderData.rdViewElevation).c_str());
 
     ImGui::Text("Field of View");
     ImGui::SameLine();
@@ -244,30 +194,13 @@ void UserInterface::createFrame(VkRenderData& renderData) {
       renderData.rdResetAnglesAndPosition = true;
     }
 
-    ImGui::Text("Position: %s", glm::to_string(renderData.rdModelPosition).c_str());
-
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-    ImGui::Text("X Rotation");
-    ImGui::PopStyleColor();
-    ImGui::SameLine();
-    ImGui::SliderInt("##ROTX", &renderData.rdRotXAngle, 0, 360);
-
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 0, 255));
-    ImGui::Text("Y Rotation");
-    ImGui::PopStyleColor();
-    ImGui::SameLine();
-    ImGui::SliderInt("##ROTY", &renderData.rdRotYAngle, 0, 360);
-
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 255, 255));
-    ImGui::Text("Z Rotation");
-    ImGui::PopStyleColor();
-    ImGui::SameLine();
-    ImGui::SliderInt("##ROTZ", &renderData.rdRotZAngle, 0, 360);
+    ImGui::Text("Box Position:    %s", glm::to_string(renderData.rdBoxModelPosition).c_str());
+    ImGui::Text("Sphere Position: %s", glm::to_string(renderData.rdSphereModelPosition).c_str());
   }
 
   if (ImGui::CollapsingHeader("Physics")) {
     ImGui::Text("Contacts found wile contact resolution: %i", renderData.rdContactsIssued);
-    ImGui::Text("Contact resolver iterations used: %i", renderData.rdContactResolverIterations);
+    ImGui::Text("Contact resolver iterations used:       %i", renderData.rdContactResolverIterations);
 
     ImGui::Checkbox("Enable Physics calculations", &renderData.rdPhysicsEnabled);
     if (!renderData.rdPhysicsEnabled) {

@@ -34,6 +34,14 @@ glm::vec3 BodyContact::getContactNormal() const{
   return mContactNormal;
 }
 
+void BodyContact::setContactPoint(const glm::vec3 point) {
+  mContactPoint = point;
+}
+
+glm::vec3 BodyContact::getContactPoint() const {
+  return mContactPoint;
+}
+
 std::shared_ptr<RigidBody> BodyContact::getBody(const unsigned int index) const {
   if (index > mBodies.size()) {
     Logger::log(1, "%s error: tried to access beyound the body array size\n", __FUNCTION__);

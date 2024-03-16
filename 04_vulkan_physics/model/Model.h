@@ -10,6 +10,7 @@
 class Model {
   public:
     Model();
+    virtual ~Model() = default;
 
     VkMesh getVertexData();
     void setPhysicsEnabled(const bool value);
@@ -35,10 +36,11 @@ class Model {
 
     std::shared_ptr<RigidBody> getRigidBody();
 
-  private:
-    void init();
-
+  protected:
     VkMesh mVertexData {};
+
+  private:
+    virtual void init();
 
     bool mPhysicsEnabled = false;
 
