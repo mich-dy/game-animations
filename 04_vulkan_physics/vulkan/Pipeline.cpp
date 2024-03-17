@@ -1,12 +1,13 @@
-#include <vector>
+#include "Pipeline.h"
 
 #include <VkBootstrap.h>
 
-#include "Pipeline.h"
 #include "Logger.h"
 #include "Shader.h"
 
-bool Pipeline::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout, VkPipeline& pipeline, VkPrimitiveTopology topology, std::string vertexShaderFilename, std::string fragmentShaderFilename) {
+bool Pipeline::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout, VkPipeline& pipeline, VkPrimitiveTopology topology,
+                    VkVertexInputBindingDescription mainBinding, std::vector<VkVertexInputAttributeDescription> attributes,
+                    std::string vertexShaderFilename, std::string fragmentShaderFilename) {
   /* shader */
   VkShaderModule vertexModule = Shader::loadShader(renderData.rdVkbDevice.device, vertexShaderFilename);
   VkShaderModule fragmentModule = Shader::loadShader(renderData.rdVkbDevice.device, fragmentShaderFilename);
@@ -33,41 +34,6 @@ bool Pipeline::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout, 
   shaderStagesInfo.push_back(fragmentStageInfo);
 
   /* assemble the graphics pipeline itself */
-  VkVertexInputBindingDescription mainBinding{};
-  mainBinding.binding = 0;
-  mainBinding.stride = sizeof(VkVertex);
-  mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-  VkVertexInputAttributeDescription positionAttribute{};
-  positionAttribute.binding = 0;
-  positionAttribute.location = 0;
-  positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-  positionAttribute.offset = offsetof(VkVertex, position);
-
-  VkVertexInputAttributeDescription colorAttribute{};
-  colorAttribute.binding = 0;
-  colorAttribute.location = 1;
-  colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-  colorAttribute.offset = offsetof(VkVertex, color);
-
-  VkVertexInputAttributeDescription normalAttribute{};
-  normalAttribute.binding = 0;
-  normalAttribute.location = 2;
-  normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-  normalAttribute.offset = offsetof(VkVertex, normal);
-
-  VkVertexInputAttributeDescription uvAttribute{};
-  uvAttribute.binding = 0;
-  uvAttribute.location = 3;
-  uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
-  uvAttribute.offset = offsetof(VkVertex, uv);
-
-  std::vector<VkVertexInputAttributeDescription> attributes;
-  attributes.push_back(positionAttribute);
-  attributes.push_back(colorAttribute);
-  attributes.push_back(normalAttribute);
-  attributes.push_back(uvAttribute);
-
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
   vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertexInputInfo.vertexBindingDescriptionCount = 1;
@@ -80,17 +46,9 @@ bool Pipeline::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout, 
   inputAssemblyInfo.topology = topology;
   inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
+  /* values will be set during rendering, just placeholders here */
   VkViewport viewport{};
-  viewport.x = 0.0f;
-  viewport.y = 0.0f;
-  viewport.width = static_cast<float>(renderData.rdVkbSwapchain.extent.width);
-  viewport.height = static_cast<float>(renderData.rdVkbSwapchain.extent.height);
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
-
   VkRect2D scissor{};
-  scissor.offset = { 0, 0 };
-  scissor.extent = renderData.rdVkbSwapchain.extent;
 
   VkPipelineViewportStateCreateInfo viewportStateInfo{};
   viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -141,7 +99,10 @@ bool Pipeline::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout, 
   depthStencilInfo.maxDepthBounds = 1.0f;
   depthStencilInfo.stencilTestEnable = VK_FALSE;
 
-  std::vector<VkDynamicState> dynStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_LINE_WIDTH };
+  std::vector<VkDynamicState> dynStates {};
+  dynStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+  dynStates.push_back(VK_DYNAMIC_STATE_SCISSOR);
+  dynStates.push_back(VK_DYNAMIC_STATE_LINE_WIDTH);
 
   VkPipelineDynamicStateCreateInfo dynStatesInfo{};
   dynStatesInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;

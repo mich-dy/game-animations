@@ -1,7 +1,7 @@
 #include "ArrowModel.h"
 #include "Logger.h"
 
-VkMesh ArrowModel::getVertexData() {
+VkLineMesh ArrowModel::getVertexData() {
   if (mVertexData.vertices.size() == 0) {
     init();
   }

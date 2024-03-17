@@ -59,16 +59,19 @@ class VkRenderer {
   private:
     VkRenderData mRenderData{};
 
+    VkVertexBufferData mLineVertexBuffer{};
+    VkVertexBufferData mPolygonVertexBuffer{};
+
     UserInterface mUserInterface{};
     Camera mCamera{};
 
     CoordArrowsModel mCoordArrowsModel{};
-    VkMesh mCoordArrowsMesh{};
+    VkLineMesh mCoordArrowsMesh{};
 
     ArrowModel mArrowModel{};
-    VkMesh mQuatArrowMesh{};
-    VkMesh mSphereArrowMesh{};
-    VkMesh mSpringLineMesh{};
+    VkLineMesh mQuatArrowMesh{};
+    VkLineMesh mSphereArrowMesh{};
+    VkLineMesh mSpringLineMesh{};
 
     /* TODO: configure max contacts */
     const unsigned int NUMBER_OF_BRIDGE_POINTS = 5;
@@ -85,6 +88,7 @@ class VkRenderer {
     std::shared_ptr<VkMesh> mSphereModelMesh = nullptr;
 
     std::unique_ptr<VkMesh> mAllMeshes = nullptr;
+    std::unique_ptr<VkLineMesh> mLineMeshes = nullptr;
 
     unsigned int mLineIndexCount = 0;
 
@@ -141,6 +145,7 @@ class VkRenderer {
     bool getQueue();
     bool createDepthBuffer();
     bool createVBO();
+    bool createLineVBO();
     bool createUBO();
     bool createSwapchain();
     bool createRenderPass();

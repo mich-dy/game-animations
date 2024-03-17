@@ -10,23 +10,40 @@
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 
-/* PCT -> position, color, texture */
 struct VkVertex {
-  glm::vec3 position;
-  glm::vec3 color;
-  glm::vec3 normal;
-  glm::vec2 uv;
-  VkVertex(){};
+  VkVertex() {};
   VkVertex(glm::vec3 pos, glm::vec3 col, glm::vec3 norm, glm::vec2 uvPos) : position(pos), color(col), normal(norm), uv(uvPos) {};
+
+  glm::vec3 position {};
+  glm::vec3 color {};
+  glm::vec3 normal {};
+  glm::vec2 uv {};
 };
 
 struct VkMesh {
-  std::vector<VkVertex> vertices;
+  std::vector<VkVertex> vertices {};
+};
+
+struct VkLineVertex {
+  glm::vec3 position {};
+  glm::vec3 color {};
+};
+
+struct VkLineMesh {
+  std::vector<VkLineVertex> vertices {};
 };
 
 struct VkUploadMatrices {
   glm::mat4 viewMatrix;
   glm::mat4 projectionMatrix;
+};
+
+struct VkVertexBufferData {
+  unsigned int rdVertexBufferSize = 2048;
+  VkBuffer rdVertexBuffer = VK_NULL_HANDLE;
+  VmaAllocation rdVertexBufferAlloc = nullptr;
+  VkBuffer rdVertexStagingBuffer = VK_NULL_HANDLE;
+  VmaAllocation rdVertexStagingBufferAlloc = nullptr;
 };
 
 struct VkRenderData {
@@ -107,12 +124,6 @@ struct VkRenderData {
   VkDescriptorPool rdTextureDescriptorPool = VK_NULL_HANDLE;
   VkDescriptorSetLayout rdTextureDescriptorLayout = VK_NULL_HANDLE;
   VkDescriptorSet rdTextureDescriptorSet = VK_NULL_HANDLE;
-
-  unsigned int rdVertexBufferSize = 2048;
-  VkBuffer rdVertexBuffer = VK_NULL_HANDLE;
-  VmaAllocation rdVertexBufferAlloc = nullptr;
-  VkBuffer rdVertexStagingBuffer = VK_NULL_HANDLE;
-  VmaAllocation rdVertexStagingBufferAlloc = nullptr;
 
   VkBuffer rdUboBuffer = VK_NULL_HANDLE;
   VmaAllocation rdUboBufferAlloc = nullptr;

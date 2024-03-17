@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 
 #ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
@@ -17,7 +18,7 @@ bool UserInterface::init(VkRenderData& renderData) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
 
-  VkDescriptorPoolSize imguiPoolSizes[] =
+  std::vector<VkDescriptorPoolSize> imguiPoolSizes =
   {
     { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
     { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
@@ -36,8 +37,8 @@ bool UserInterface::init(VkRenderData& renderData) {
   imguiPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   imguiPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
   imguiPoolInfo.maxSets = 1000;
-  imguiPoolInfo.poolSizeCount = std::size(imguiPoolSizes);
-  imguiPoolInfo.pPoolSizes = imguiPoolSizes;
+  imguiPoolInfo.poolSizeCount = static_cast<uint32_t>(imguiPoolSizes.size());
+  imguiPoolInfo.pPoolSizes = imguiPoolSizes.data();
 
   if (vkCreateDescriptorPool(renderData.rdVkbDevice.device, &imguiPoolInfo, nullptr, &renderData.rdImguiDescriptorPool)) {
     Logger::log(1, "%s error: could not init ImGui descriptor pool \n", __FUNCTION__);

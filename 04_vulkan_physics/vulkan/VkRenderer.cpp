@@ -70,7 +70,7 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
       return false;
   }
 
-  if (!createVBO()) {
+  if (!createVBO() || !createLineVBO()) {
       return false;
   }
 
@@ -219,6 +219,9 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 
   mAllMeshes = std::make_unique<VkMesh>();
   Logger::log(1, "%s: global mesh storage initialized\n", __FUNCTION__);
+
+  mLineMeshes = std::make_unique<VkLineMesh>();
+  Logger::log(1, "%s: global line mesh storage initialized\n", __FUNCTION__);
 
   mFrameTimer.start();
 
@@ -417,8 +420,16 @@ bool VkRenderer::recreateSwapchain() {
 }
 
 bool VkRenderer::createVBO() {
-  if (!VertexBuffer::init(mRenderData)) {
+  if (!VertexBuffer::init(mRenderData, mPolygonVertexBuffer)) {
     Logger::log(1, "%s error: could not create vertex buffer\n", __FUNCTION__);
+    return false;
+  }
+  return true;
+}
+
+bool VkRenderer::createLineVBO() {
+  if (!VertexBuffer::init(mRenderData, mLineVertexBuffer)) {
+    Logger::log(1, "%s error: could not create line vertex buffer\n", __FUNCTION__);
     return false;
   }
   return true;
@@ -451,18 +462,44 @@ bool VkRenderer::createPipelineLayout() {
 bool VkRenderer::createBasicPipeline() {
   std::string vertexShaderFile = "shader/basic.vert.spv";
   std::string fragmentShaderFile = "shader/basic.frag.spv";
-  if (!Pipeline::init(mRenderData, mRenderData.rdPipelineLayout, mRenderData.rdBasicPipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vertexShaderFile, fragmentShaderFile)) {
-    Logger::log(1, "%s error: could not init basic shader pipeline\n", __FUNCTION__);
-    return false;
-  }
-  return true;
-}
 
-bool VkRenderer::createLinePipeline() {
-  std::string vertexShaderFile = "shader/line.vert.spv";
-  std::string fragmentShaderFile = "shader/line.frag.spv";
-  if (!Pipeline::init(mRenderData, mRenderData.rdPipelineLayout, mRenderData.rdLinePipeline, VK_PRIMITIVE_TOPOLOGY_LINE_LIST, vertexShaderFile, fragmentShaderFile)) {
-    Logger::log(1, "%s error: could not init line shader pipeline\n", __FUNCTION__);
+  VkVertexInputBindingDescription mainBinding{};
+  mainBinding.binding = 0;
+  mainBinding.stride = sizeof(VkVertex);
+  mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+  VkVertexInputAttributeDescription positionAttribute{};
+  positionAttribute.binding = 0;
+  positionAttribute.location = 0;
+  positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  positionAttribute.offset = offsetof(VkVertex, position);
+
+  VkVertexInputAttributeDescription colorAttribute{};
+  colorAttribute.binding = 0;
+  colorAttribute.location = 1;
+  colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  colorAttribute.offset = offsetof(VkVertex, color);
+
+  VkVertexInputAttributeDescription normalAttribute{};
+  normalAttribute.binding = 0;
+  normalAttribute.location = 2;
+  normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  normalAttribute.offset = offsetof(VkVertex, normal);
+
+  VkVertexInputAttributeDescription uvAttribute{};
+  uvAttribute.binding = 0;
+  uvAttribute.location = 3;
+  uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+  uvAttribute.offset = offsetof(VkVertex, uv);
+
+  std::vector<VkVertexInputAttributeDescription> attributes;
+  attributes.push_back(positionAttribute);
+  attributes.push_back(colorAttribute);
+  attributes.push_back(normalAttribute);
+  attributes.push_back(uvAttribute);
+
+  if (!Pipeline::init(mRenderData, mRenderData.rdPipelineLayout, mRenderData.rdBasicPipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, mainBinding, attributes, vertexShaderFile, fragmentShaderFile)) {
+    Logger::log(1, "%s error: could not init basic shader pipeline\n", __FUNCTION__);
     return false;
   }
   return true;
@@ -471,8 +508,77 @@ bool VkRenderer::createLinePipeline() {
 bool VkRenderer::createFlatPipeline() {
   std::string vertexShaderFile = "shader/flat.vert.spv";
   std::string fragmentShaderFile = "shader/flat.frag.spv";
-  if (!Pipeline::init(mRenderData, mRenderData.rdPipelineLayout, mRenderData.rdFlatPipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, vertexShaderFile, fragmentShaderFile)) {
+
+  VkVertexInputBindingDescription mainBinding{};
+  mainBinding.binding = 0;
+  mainBinding.stride = sizeof(VkVertex);
+  mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+  VkVertexInputAttributeDescription positionAttribute{};
+  positionAttribute.binding = 0;
+  positionAttribute.location = 0;
+  positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  positionAttribute.offset = offsetof(VkVertex, position);
+
+  VkVertexInputAttributeDescription colorAttribute{};
+  colorAttribute.binding = 0;
+  colorAttribute.location = 1;
+  colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  colorAttribute.offset = offsetof(VkVertex, color);
+
+  VkVertexInputAttributeDescription normalAttribute{};
+  normalAttribute.binding = 0;
+  normalAttribute.location = 2;
+  normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  normalAttribute.offset = offsetof(VkVertex, normal);
+
+  VkVertexInputAttributeDescription uvAttribute{};
+  uvAttribute.binding = 0;
+  uvAttribute.location = 3;
+  uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+  uvAttribute.offset = offsetof(VkVertex, uv);
+
+  std::vector<VkVertexInputAttributeDescription> attributes;
+  attributes.push_back(positionAttribute);
+  attributes.push_back(colorAttribute);
+  attributes.push_back(normalAttribute);
+  attributes.push_back(uvAttribute);
+
+  if (!Pipeline::init(mRenderData, mRenderData.rdPipelineLayout, mRenderData.rdFlatPipeline, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, mainBinding, attributes, vertexShaderFile, fragmentShaderFile)) {
     Logger::log(1, "%s error: could not init flat shader pipeline\n", __FUNCTION__);
+    return false;
+  }
+  return true;
+}
+
+
+bool VkRenderer::createLinePipeline() {
+  std::string vertexShaderFile = "shader/line.vert.spv";
+  std::string fragmentShaderFile = "shader/line.frag.spv";
+
+  VkVertexInputBindingDescription mainBinding{};
+  mainBinding.binding = 0;
+  mainBinding.stride = sizeof(VkLineVertex);
+  mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+  VkVertexInputAttributeDescription positionAttribute{};
+  positionAttribute.binding = 0;
+  positionAttribute.location = 0;
+  positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  positionAttribute.offset = offsetof(VkLineVertex, position);
+
+  VkVertexInputAttributeDescription colorAttribute{};
+  colorAttribute.binding = 0;
+  colorAttribute.location = 1;
+  colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+  colorAttribute.offset = offsetof(VkLineVertex, color);
+
+  std::vector<VkVertexInputAttributeDescription> attributes;
+  attributes.push_back(positionAttribute);
+  attributes.push_back(colorAttribute);
+
+  if (!Pipeline::init(mRenderData, mRenderData.rdPipelineLayout, mRenderData.rdLinePipeline, VK_PRIMITIVE_TOPOLOGY_LINE_LIST, mainBinding, attributes, vertexShaderFile, fragmentShaderFile)) {
+    Logger::log(1, "%s error: could not init line shader pipeline\n", __FUNCTION__);
     return false;
   }
   return true;
@@ -555,7 +661,9 @@ void VkRenderer::cleanup() {
   PipelineLayout::cleanup(mRenderData, mRenderData.rdPipelineLayout);
   Renderpass::cleanup(mRenderData);
   UniformBuffer::cleanup(mRenderData);
-  VertexBuffer::cleanup(mRenderData);
+
+  VertexBuffer::cleanup(mRenderData, mPolygonVertexBuffer);
+  VertexBuffer::cleanup(mRenderData, mLineVertexBuffer);
 
   vkDestroyImageView(mRenderData.rdVkbDevice.device, mRenderData.rdDepthImageView, nullptr);
   vmaDestroyImage(mRenderData.rdAllocator, mRenderData.rdDepthImage, mRenderData.rdDepthImageAlloc);
@@ -700,6 +808,7 @@ bool VkRenderer::draw(const float deltaTime) {
   handleMovementKeys();
 
   mAllMeshes->vertices.clear();
+  mLineMeshes->vertices.clear();
 
   if (vkWaitForFences(mRenderData.rdVkbDevice.device, 1, &mRenderData.rdRenderFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
     Logger::log(1, "%s error: waiting for fence failed\n", __FUNCTION__);
@@ -734,7 +843,9 @@ bool VkRenderer::draw(const float deltaTime) {
   VkClearValue depthValue;
   depthValue.depthStencil.depth = 1.0f;
 
-  VkClearValue clearValues[] = { colorClearValue, depthValue };
+  std::vector<VkClearValue> clearValues {};
+  clearValues.push_back(colorClearValue);
+  clearValues.push_back(depthValue);
 
   VkRenderPassBeginInfo rpInfo{};
   rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -743,10 +854,10 @@ bool VkRenderer::draw(const float deltaTime) {
   rpInfo.renderArea.offset.x = 0;
   rpInfo.renderArea.offset.y = 0;
   rpInfo.renderArea.extent = mRenderData.rdVkbSwapchain.extent;
-  rpInfo.framebuffer = mRenderData.rdFramebuffers[imageIndex];
+  rpInfo.framebuffer = mRenderData.rdFramebuffers.at(imageIndex);
 
-  rpInfo.clearValueCount = 2;
-  rpInfo.pClearValues = clearValues;
+  rpInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+  rpInfo.pClearValues = clearValues.data();
 
   /* use inverted viewport to have same coordinates as OpenGL */
   VkViewport viewport{};
@@ -816,7 +927,7 @@ bool VkRenderer::draw(const float deltaTime) {
       [=](auto &n){
         n.color /= 2.0f;
     });
-    mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
+    mLineMeshes->vertices.insert(mLineMeshes->vertices.end(),
       mCoordArrowsMesh.vertices.begin(), mCoordArrowsMesh.vertices.end());
   }
 
@@ -836,7 +947,7 @@ bool VkRenderer::draw(const float deltaTime) {
         n.position += mQuatModelPos;
 
     });
-    mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
+    mLineMeshes->vertices.insert(mLineMeshes->vertices.end(),
       mQuatArrowMesh.vertices.begin(), mQuatArrowMesh.vertices.end());
 
     mSphereArrowMesh = mArrowModel.getVertexData();
@@ -851,15 +962,15 @@ bool VkRenderer::draw(const float deltaTime) {
         n.position += mSphereModelPos;
 
     });
-    mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
+    mLineMeshes->vertices.insert(mLineMeshes->vertices.end(),
       mSphereArrowMesh.vertices.begin(), mSphereArrowMesh.vertices.end());
   }
 
   mSpringLineMesh.vertices.clear();
-  VkVertex anchor1Vertex;
+  VkLineVertex anchor1Vertex;
   anchor1Vertex.position = mRigidBodyWorld.getRigidBody(NUMBER_OF_BRIDGE_POINTS * 3 - 1)->getPosition();
   anchor1Vertex.color = glm::vec3(0.0f, 1.0f, 0.0f);
-  VkVertex cableEndVertex;
+  VkLineVertex cableEndVertex;
   cableEndVertex.position = mBoxModel->getRigidBody()->getPosition();
   cableEndVertex.color = glm::vec3(1.0f);
   mSpringLineMesh.vertices.push_back(anchor1Vertex);
@@ -874,12 +985,12 @@ bool VkRenderer::draw(const float deltaTime) {
 
   /* anchor to plank */
   for (unsigned int i = 0; i < NUMBER_OF_BRIDGE_POINTS * 2; ++i) {
-    VkVertex anchorVertex;
+    VkLineVertex anchorVertex;
     anchorVertex.position = mRigidBodyWorld.getRigidBody(i)->getPosition();
     anchorVertex.color = glm::vec3(0.0f, 1.0f, 0.0f);
     mSpringLineMesh.vertices.push_back(anchorVertex);
 
-    VkVertex plankVertex;
+    VkLineVertex plankVertex;
     plankVertex.position = mRigidBodyWorld.getRigidBody(i + NUMBER_OF_BRIDGE_POINTS * 2)->getPosition();
     plankVertex.color = glm::vec3(1.0f);
     mSpringLineMesh.vertices.push_back(plankVertex);
@@ -887,12 +998,12 @@ bool VkRenderer::draw(const float deltaTime) {
 
   /* planks */
   for (unsigned int i = NUMBER_OF_BRIDGE_POINTS * 2; i < NUMBER_OF_BRIDGE_POINTS * 4; i += 2) {
-    VkVertex plank1Vertex;
+    VkLineVertex plank1Vertex;
     plank1Vertex.position = mRigidBodyWorld.getRigidBody(i)->getPosition();
     plank1Vertex.color = glm::vec3(1.0f, 0.0f, 0.0f);
     mSpringLineMesh.vertices.push_back(plank1Vertex);
 
-    VkVertex plank2Vertex;
+    VkLineVertex plank2Vertex;
     plank2Vertex.position = mRigidBodyWorld.getRigidBody(i + 1)->getPosition();
     plank2Vertex.color = glm::vec3(1.0f, 0.0f, 0.0f);
     mSpringLineMesh.vertices.push_back(plank2Vertex);
@@ -900,18 +1011,18 @@ bool VkRenderer::draw(const float deltaTime) {
 
   /* connectens between planks on every side */
   for (unsigned int i = NUMBER_OF_BRIDGE_POINTS * 2; i < NUMBER_OF_BRIDGE_POINTS * 4 - 2; ++i) {
-    VkVertex plank1Vertex;
+    VkLineVertex plank1Vertex;
     plank1Vertex.position = mRigidBodyWorld.getRigidBody(i)->getPosition();
     plank1Vertex.color = glm::vec3(0.0f, 0.0f, 1.0f);
     mSpringLineMesh.vertices.push_back(plank1Vertex);
 
-    VkVertex plank2Vertex;
+    VkLineVertex plank2Vertex;
     plank2Vertex.position = mRigidBodyWorld.getRigidBody(i + 2)->getPosition();
     plank2Vertex.color = glm::vec3(0.0f, 0.0f, 1.0f);
     mSpringLineMesh.vertices.push_back(plank2Vertex);
   }
 
-  mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
+  mLineMeshes->vertices.insert(mLineMeshes->vertices.end(),
     mSpringLineMesh.vertices.begin(), mSpringLineMesh.vertices.end());
 
   /* draw box model */
@@ -973,7 +1084,8 @@ bool VkRenderer::draw(const float deltaTime) {
 
   /* upload data to VBO */
   mUploadToVBOTimer.start();
-  VertexBuffer::uploadData(mRenderData, *mAllMeshes);
+  VertexBuffer::uploadData(mRenderData, mPolygonVertexBuffer, *mAllMeshes);
+  VertexBuffer::uploadData(mRenderData, mLineVertexBuffer, *mLineMeshes);
   mRenderData.rdUploadToVBOTime = mUploadToVBOTimer.stop();
 
   /* the rendering itself happens here */
@@ -985,9 +1097,8 @@ bool VkRenderer::draw(const float deltaTime) {
 
   /* vertex buffer */
   VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(mRenderData.rdCommandBuffer, 0, 1, &mRenderData.rdVertexBuffer, &offset);
+  vkCmdBindVertexBuffers(mRenderData.rdCommandBuffer, 0, 1, &mLineVertexBuffer.rdVertexBuffer, &offset);
 
-  vkCmdBindDescriptorSets(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipelineLayout, 0, 1, &mRenderData.rdTextureDescriptorSet, 0, nullptr);
   vkCmdBindDescriptorSets(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipelineLayout, 1, 1, &mRenderData.rdUBODescriptorSet, 0, nullptr);
 
   /* draw lines first */
@@ -998,14 +1109,16 @@ bool VkRenderer::draw(const float deltaTime) {
   }
 
   /* draw models last, after lines */
-
-  /* draw textured models */
-  vkCmdBindPipeline(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdBasicPipeline);
-  vkCmdDraw(mRenderData.rdCommandBuffer, mRenderData.rdTriangleCount * 3, 1, mLineIndexCount, 0);
+  vkCmdBindVertexBuffers(mRenderData.rdCommandBuffer, 0, 1, &mPolygonVertexBuffer.rdVertexBuffer, &offset);
 
   /* draw flat models */
   vkCmdBindPipeline(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdFlatPipeline);
-  vkCmdDraw(mRenderData.rdCommandBuffer, mRenderData.rdFlatTriangleCount * 3, 1, mLineIndexCount + mRenderData.rdTriangleCount * 3, 0);
+  vkCmdDraw(mRenderData.rdCommandBuffer, mRenderData.rdFlatTriangleCount * 3, 1, mRenderData.rdTriangleCount * 3, 0);
+
+  /* draw textured models */
+  vkCmdBindDescriptorSets(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipelineLayout, 0, 1, &mRenderData.rdTextureDescriptorSet, 0, nullptr);
+  vkCmdBindPipeline(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdBasicPipeline);
+  vkCmdDraw(mRenderData.rdCommandBuffer, mRenderData.rdTriangleCount * 3, 1, 0, 0);
 
   // imgui overlay
   mUIGenerateTimer.start();

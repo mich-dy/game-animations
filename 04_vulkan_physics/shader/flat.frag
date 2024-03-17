@@ -8,7 +8,7 @@ layout (location = 0) out vec4 FragColor;
 vec3 lightPos = vec3(40.0, -50.0, -30.0);
 vec3 lightColor = vec3(1.0, 1.0, 1.0);
 
-const float ambientLight = 0.1f;
+const float ambientLight = 0.3f;
 
 void main() {
   float lightAngle = max(dot(normalize(vertNormal), normalize(lightPos)), 0.0);

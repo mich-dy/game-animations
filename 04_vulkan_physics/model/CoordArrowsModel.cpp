@@ -1,7 +1,7 @@
 #include "CoordArrowsModel.h"
 #include "Logger.h"
 
-VkMesh CoordArrowsModel::getVertexData() {
+VkLineMesh CoordArrowsModel::getVertexData() {
   if (mVertexData.vertices.size() == 0) {
     init();
   }

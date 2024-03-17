@@ -1,7 +1,6 @@
 /* Vulkan framebuffer class */
 #pragma once
 
-#include <vector>
 #include <vulkan/vulkan.h>
 
 #include "VkRenderData.h"

@@ -1,6 +1,7 @@
 #include "Renderpass.h"
 #include "Logger.h"
 
+#include <vector>
 #include <VkBootstrap.h>
 
 bool Renderpass::init(VkRenderData &renderData) {
@@ -55,17 +56,22 @@ bool Renderpass::init(VkRenderData &renderData) {
   depthDep.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
   depthDep.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-  VkSubpassDependency dependencies[] = { subpassDep, depthDep };
-  VkAttachmentDescription attachments[] = { colorAtt, depthAtt };
+  std::vector<VkSubpassDependency> dependencies {};
+  dependencies.push_back(subpassDep);
+  dependencies.push_back(depthDep);
+
+  std::vector<VkAttachmentDescription> attachments {};
+  attachments.push_back(colorAtt);
+  attachments.push_back(depthAtt);
 
   VkRenderPassCreateInfo renderPassInfo{};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.attachmentCount = 2;
-  renderPassInfo.pAttachments = attachments;
+  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  renderPassInfo.pAttachments = attachments.data();
   renderPassInfo.subpassCount = 1;
   renderPassInfo.pSubpasses = &subpassDesc;
-  renderPassInfo.dependencyCount = 2;
-  renderPassInfo.pDependencies = dependencies;
+  renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+  renderPassInfo.pDependencies = dependencies.data();
 
   if (vkCreateRenderPass(renderData.rdVkbDevice.device, &renderPassInfo, nullptr, &renderData.rdRenderpass) != VK_SUCCESS) {
     Logger::log(1, "%s error; could not create renderpass\n", __FUNCTION__);

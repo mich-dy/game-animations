@@ -7,9 +7,9 @@
 
 class ArrowModel {
   public:
-    VkMesh getVertexData();
+    VkLineMesh getVertexData();
 
   private:
     void init();
-    VkMesh mVertexData;
+    VkLineMesh mVertexData;
 };
