@@ -33,17 +33,24 @@ struct VkLineMesh {
   std::vector<VkLineVertex> vertices {};
 };
 
-struct VkUploadMatrices {
-  glm::mat4 viewMatrix;
-  glm::mat4 projectionMatrix;
-};
-
 struct VkVertexBufferData {
   unsigned int rdVertexBufferSize = 2048;
+
   VkBuffer rdVertexBuffer = VK_NULL_HANDLE;
   VmaAllocation rdVertexBufferAlloc = nullptr;
+
   VkBuffer rdVertexStagingBuffer = VK_NULL_HANDLE;
   VmaAllocation rdVertexStagingBufferAlloc = nullptr;
+};
+
+struct VkShaderStorageBufferData {
+  size_t rdSsboBufferSize = 2048;
+
+  VkBuffer rdSsboBuffer = VK_NULL_HANDLE;
+  VmaAllocation rdSsboBufferAlloc = nullptr;
+
+  VkDescriptorSetLayout rdSSBODescriptorLayout = VK_NULL_HANDLE;
+  VkDescriptorSet rdSSBODescriptorSet = VK_NULL_HANDLE;
 };
 
 struct VkRenderData {
@@ -125,12 +132,15 @@ struct VkRenderData {
   VkDescriptorSetLayout rdTextureDescriptorLayout = VK_NULL_HANDLE;
   VkDescriptorSet rdTextureDescriptorSet = VK_NULL_HANDLE;
 
+  VkDescriptorPool rdUBODescriptorPool = VK_NULL_HANDLE;
+
   VkBuffer rdUboBuffer = VK_NULL_HANDLE;
   VmaAllocation rdUboBufferAlloc = nullptr;
 
-  VkDescriptorPool rdUBODescriptorPool = VK_NULL_HANDLE;
   VkDescriptorSetLayout rdUBODescriptorLayout = VK_NULL_HANDLE;
   VkDescriptorSet rdUBODescriptorSet = VK_NULL_HANDLE;
+
+  VkDescriptorPool rdSSBODescriptorPool = VK_NULL_HANDLE;
 
   VkDescriptorPool rdImguiDescriptorPool = VK_NULL_HANDLE;
 };

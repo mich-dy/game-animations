@@ -37,7 +37,7 @@ bool VertexBuffer::init(VkRenderData &renderData, VkVertexBufferData &bufferData
   return true;
 }
 
-bool VertexBuffer::uploadData(VkRenderData &renderData, VkVertexBufferData &bufferData, VkMesh vertexData) {
+bool VertexBuffer::uploadData(VkRenderData &renderData, VkVertexBufferData &bufferData, VkMesh vertexData, const bool separateCMDBuffer) {
   unsigned int vertexDataSize = vertexData.vertices.size() * sizeof(VkVertex);
 
   /* buffer too small? try to resize */
@@ -51,10 +51,10 @@ bool VertexBuffer::uploadData(VkRenderData &renderData, VkVertexBufferData &buff
   memcpy(data, vertexData.vertices.data(), vertexDataSize);
   vmaUnmapMemory(renderData.rdAllocator, bufferData.rdVertexStagingBufferAlloc);
 
-  return doStagingUpload(renderData, bufferData, vertexDataSize);
+  return doStagingUpload(renderData, bufferData, vertexDataSize, separateCMDBuffer);
 }
 
-bool VertexBuffer::uploadData(VkRenderData &renderData, VkVertexBufferData &bufferData, VkLineMesh vertexData) {
+bool VertexBuffer::uploadData(VkRenderData &renderData, VkVertexBufferData &bufferData, VkLineMesh vertexData, const bool separateCMDBuffer) {
   unsigned int vertexDataSize = vertexData.vertices.size() * sizeof(VkLineVertex);
 
   /* buffer too small? try to resize */
@@ -68,7 +68,7 @@ bool VertexBuffer::uploadData(VkRenderData &renderData, VkVertexBufferData &buff
   memcpy(data, vertexData.vertices.data(), vertexDataSize);
   vmaUnmapMemory(renderData.rdAllocator, bufferData.rdVertexStagingBufferAlloc);
 
-  return doStagingUpload(renderData, bufferData, vertexDataSize);
+  return doStagingUpload(renderData, bufferData, vertexDataSize, separateCMDBuffer);
 }
 
 bool VertexBuffer::resizeBuffer(VkRenderData& renderData, VkVertexBufferData& bufferData, const unsigned int vertexDataSize) {
@@ -84,7 +84,7 @@ bool VertexBuffer::resizeBuffer(VkRenderData& renderData, VkVertexBufferData& bu
   return true;
 }
 
-bool VertexBuffer::doStagingUpload(VkRenderData& renderData, VkVertexBufferData& bufferData, const unsigned int vertexDataSize) {
+bool VertexBuffer::doStagingUpload(VkRenderData& renderData, VkVertexBufferData& bufferData, const unsigned int vertexDataSize, const bool separateCMDBuffer) {
   VkBufferMemoryBarrier vertexBufferBarrier{};
   vertexBufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
   vertexBufferBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
@@ -100,17 +100,25 @@ bool VertexBuffer::doStagingUpload(VkRenderData& renderData, VkVertexBufferData&
   stagingBufferCopy.dstOffset = 0;
   stagingBufferCopy.size = vertexDataSize;
 
-  vkCmdCopyBuffer(renderData.rdCommandBuffer, bufferData.rdVertexStagingBuffer,
-    bufferData.rdVertexBuffer, 1, &stagingBufferCopy);
-  vkCmdPipelineBarrier(renderData.rdCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-    VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vertexBufferBarrier, 0, nullptr);
+  /* trigger data transfer via command buffer */
+  if (separateCMDBuffer) {
+    VkCommandBuffer commandBuffer = CommandBuffer::createSingleShotBuffer(renderData);
+
+    vkCmdCopyBuffer(commandBuffer, bufferData.rdVertexStagingBuffer, bufferData.rdVertexBuffer, 1, &stagingBufferCopy);
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vertexBufferBarrier, 0, nullptr);
+
+    if (!CommandBuffer::submitSingleShotBuffer(renderData, commandBuffer, renderData.rdGraphicsQueue)) {
+      return false;
+    }
+  } else {
+    vkCmdCopyBuffer(renderData.rdCommandBuffer, bufferData.rdVertexStagingBuffer, bufferData.rdVertexBuffer, 1, &stagingBufferCopy);
+    vkCmdPipelineBarrier(renderData.rdCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &vertexBufferBarrier, 0, nullptr);
+  }
 
   return true;
 }
 
 void VertexBuffer::cleanup(VkRenderData &renderData, VkVertexBufferData &bufferData) {
-  vmaDestroyBuffer(renderData.rdAllocator, bufferData.rdVertexStagingBuffer,
-    bufferData.rdVertexStagingBufferAlloc);
-  vmaDestroyBuffer(renderData.rdAllocator, bufferData.rdVertexBuffer,
-    bufferData.rdVertexBufferAlloc);
+  vmaDestroyBuffer(renderData.rdAllocator, bufferData.rdVertexStagingBuffer, bufferData.rdVertexStagingBufferAlloc);
+  vmaDestroyBuffer(renderData.rdAllocator, bufferData.rdVertexBuffer, bufferData.rdVertexBufferAlloc);
 }

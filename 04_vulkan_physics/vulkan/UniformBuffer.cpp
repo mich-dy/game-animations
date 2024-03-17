@@ -3,10 +3,29 @@
 
 #include <VkBootstrap.h>
 
-bool UniformBuffer::init(VkRenderData& renderData) {
+bool UniformBuffer::createDescriptorPool(VkRenderData& renderData) {
+  VkDescriptorPoolSize poolSize{};
+  poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  poolSize.descriptorCount = 1;
+
+  VkDescriptorPoolCreateInfo descriptorPool{};
+  descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  descriptorPool.poolSizeCount = 1;
+  descriptorPool.pPoolSizes = &poolSize;
+  descriptorPool.maxSets = 10;
+
+  if (vkCreateDescriptorPool(renderData.rdVkbDevice.device, &descriptorPool, nullptr, &renderData.rdUBODescriptorPool) != VK_SUCCESS) {
+    Logger::log(1, "%s error: could not create UBO descriptor pool\n", __FUNCTION__);
+    return false;
+  }
+
+  return true;
+}
+
+bool UniformBuffer::init(VkRenderData& renderData, const VkDeviceSize bufferSize) {
   VkBufferCreateInfo bufferInfo{};
   bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  bufferInfo.size = sizeof(VkUploadMatrices);
+  bufferInfo.size = bufferSize;
   bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
   VmaAllocationCreateInfo vmaAllocInfo{};
@@ -34,21 +53,6 @@ bool UniformBuffer::init(VkRenderData& renderData) {
     return false;
   }
 
-  VkDescriptorPoolSize poolSize{};
-  poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSize.descriptorCount = 1;
-
-  VkDescriptorPoolCreateInfo descriptorPool{};
-  descriptorPool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  descriptorPool.poolSizeCount = 1;
-  descriptorPool.pPoolSizes = &poolSize;
-  descriptorPool.maxSets = 1;
-
-  if (vkCreateDescriptorPool(renderData.rdVkbDevice.device, &descriptorPool, nullptr, &renderData.rdUBODescriptorPool) != VK_SUCCESS) {
-    Logger::log(1, "%s error: could not create UBO descriptor pool\n", __FUNCTION__);
-    return false;
-  }
-
   VkDescriptorSetAllocateInfo descriptorAllocateInfo{};
   descriptorAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   descriptorAllocateInfo.descriptorPool = renderData.rdUBODescriptorPool;
@@ -63,7 +67,7 @@ bool UniformBuffer::init(VkRenderData& renderData) {
   VkDescriptorBufferInfo uboInfo{};
   uboInfo.buffer = renderData.rdUboBuffer;
   uboInfo.offset = 0;
-  uboInfo.range = sizeof(VkUploadMatrices);
+  uboInfo.range = bufferSize;
 
   VkWriteDescriptorSet writeDescriptorSet{};
   writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -75,7 +79,18 @@ bool UniformBuffer::init(VkRenderData& renderData) {
 
   vkUpdateDescriptorSets(renderData.rdVkbDevice.device, 1, &writeDescriptorSet, 0, nullptr);
 
-	return true;
+  return true;
+}
+
+void UniformBuffer::uploadData(VkRenderData& renderData, std::vector<glm::mat4>& matrices) {
+  if (matrices.size() == 0) {
+    return;
+  }
+
+  void* data;
+  vmaMapMemory(renderData.rdAllocator, renderData.rdUboBufferAlloc , &data);
+  std::memcpy(data, matrices.data(), sizeof(matrices) * sizeof(glm::mat4));
+  vmaUnmapMemory(renderData.rdAllocator, renderData.rdUboBufferAlloc);
 }
 
 void UniformBuffer::cleanup(VkRenderData& renderData) {

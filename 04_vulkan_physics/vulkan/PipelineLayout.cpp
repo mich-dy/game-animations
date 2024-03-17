@@ -4,12 +4,7 @@
 #include <vector>
 #include <VkBootstrap.h>
 
-bool PipelineLayout::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout) {
-
-  std::vector<VkDescriptorSetLayout> layouts;
-  layouts.push_back(renderData.rdTextureDescriptorLayout);
-  layouts.push_back(renderData.rdUBODescriptorLayout);
-
+bool PipelineLayout::init(VkRenderData& renderData, VkPipelineLayout& pipelineLayout, std::vector<VkDescriptorSetLayout>& layouts) {
   VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
   pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());

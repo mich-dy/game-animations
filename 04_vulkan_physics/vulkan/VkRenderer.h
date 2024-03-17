@@ -26,6 +26,7 @@
 #include "Texture.h"
 #include "UniformBuffer.h"
 #include "VertexBuffer.h"
+#include "ShaderStorageBuffer.h"
 #include "UserInterface.h"
 #include "Camera.h"
 #include "BoxModel.h"
@@ -62,6 +63,8 @@ class VkRenderer {
     VkVertexBufferData mLineVertexBuffer{};
     VkVertexBufferData mPolygonVertexBuffer{};
 
+    VkShaderStorageBufferData mObjectMatrixSSBO{};
+
     UserInterface mUserInterface{};
     Camera mCamera{};
 
@@ -72,6 +75,9 @@ class VkRenderer {
     VkLineMesh mQuatArrowMesh{};
     VkLineMesh mSphereArrowMesh{};
     VkLineMesh mSpringLineMesh{};
+
+    std::vector<glm::mat4> mUboMatrices {};
+    std::vector<glm::mat4> mModelMatrices {};
 
     /* TODO: configure max contacts */
     const unsigned int NUMBER_OF_BRIDGE_POINTS = 5;
@@ -91,9 +97,6 @@ class VkRenderer {
     std::unique_ptr<VkLineMesh> mLineMeshes = nullptr;
 
     unsigned int mLineIndexCount = 0;
-
-    glm::mat4 mRotYMat = glm::mat4(1.0f);
-    glm::mat4 mRotZMat = glm::mat4(1.0f);
 
     /* initial position */
     glm::vec3 mSpring1AnchorPos = glm::vec3(1.0f, 0.0f, -1.0f);
@@ -138,15 +141,19 @@ class VkRenderer {
     VkSurfaceKHR mSurface = VK_NULL_HANDLE;
 
     VkDeviceSize mMinUniformBufferOffsetAlignment = 0;
-
-    VkUploadMatrices mMatrices{};
-
     bool deviceInit();
     bool getQueue();
     bool createDepthBuffer();
+
     bool createVBO();
     bool createLineVBO();
+
+    bool createUBODescriptorPool();
     bool createUBO();
+
+    bool createSSBODescriptorPool();
+    bool createSSBO();
+
     bool createSwapchain();
     bool createRenderPass();
     bool createPipelineLayout();

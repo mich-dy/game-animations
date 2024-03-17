@@ -18,9 +18,11 @@
 VkRenderer::VkRenderer(GLFWwindow *window) {
   mRenderData.rdWindow = window;
 
-  /* identity matrices */
-  mMatrices.viewMatrix = glm::mat4(1.0f);
-  mMatrices.projectionMatrix = glm::mat4(1.0f);
+  mUboMatrices.emplace_back(glm::mat4(1.0f)); // view matrix
+  mUboMatrices.emplace_back(glm::mat4(1.0f)); // perspective matrix
+
+  mModelMatrices.emplace_back(glm::mat4(1.0f)); // box
+  mModelMatrices.emplace_back(glm::mat4(1.0f)); // shpere
 }
 
 bool VkRenderer::init(unsigned int width, unsigned int height) {
@@ -66,12 +68,16 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
     return false;
   }
 
-  if (!createUBO()) {
-      return false;
+  if (!createUBODescriptorPool() || !createUBO()) {
+    return false;
+  }
+
+  if (!createSSBODescriptorPool() || !createSSBO()) {
+    return false;
   }
 
   if (!createVBO() || !createLineVBO()) {
-      return false;
+    return false;
   }
 
   if (!createRenderPass()) {
@@ -222,6 +228,19 @@ bool VkRenderer::init(unsigned int width, unsigned int height) {
 
   mLineMeshes = std::make_unique<VkLineMesh>();
   Logger::log(1, "%s: global line mesh storage initialized\n", __FUNCTION__);
+
+  /* upload model data to vertex buffer */
+  *mQuatModelMesh = mBoxModel->getVertexData();
+  mRenderData.rdTriangleCount = mQuatModelMesh->vertices.size() / 3;
+  mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
+    mQuatModelMesh->vertices.begin(), mQuatModelMesh->vertices.end());
+
+  *mSphereModelMesh = mSphereModel->getVertexData();
+  mRenderData.rdFlatTriangleCount = mSphereModelMesh->vertices.size() / 3;
+  mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
+    mSphereModelMesh->vertices.begin(), mSphereModelMesh->vertices.end());
+
+  VertexBuffer::uploadData(mRenderData, mPolygonVertexBuffer, *mAllMeshes, true);
 
   mFrameTimer.start();
 
@@ -435,9 +454,33 @@ bool VkRenderer::createLineVBO() {
   return true;
 }
 
+bool VkRenderer::createUBODescriptorPool() {
+  if (!UniformBuffer::createDescriptorPool(mRenderData)) {
+    Logger::log(1, "%s error: could not create uniform buffers descripotr pool\n", __FUNCTION__);
+    return false;
+  }
+  return true;
+}
+
 bool VkRenderer::createUBO() {
-  if (!UniformBuffer::init(mRenderData)) {
+  if (!UniformBuffer::init(mRenderData, mUboMatrices.size() * sizeof(glm::mat4))) {
     Logger::log(1, "%s error: could not create uniform buffers\n", __FUNCTION__);
+    return false;
+  }
+  return true;
+}
+
+bool VkRenderer::createSSBODescriptorPool() {
+  if (!ShaderStorageBuffer::createDescriptorPool(mRenderData)) {
+    Logger::log(1, "%s error: could not create SSBO descripotr pool\n", __FUNCTION__);
+    return false;
+  }
+  return true;
+}
+
+bool VkRenderer::createSSBO() {
+  if (!ShaderStorageBuffer::init(mRenderData, mObjectMatrixSSBO, 2 * sizeof(glm::mat4))) {
+    Logger::log(1, "%s error: could not create SSBO\n", __FUNCTION__);
     return false;
   }
   return true;
@@ -452,7 +495,12 @@ bool VkRenderer::createRenderPass() {
 }
 
 bool VkRenderer::createPipelineLayout() {
-  if (!PipelineLayout::init(mRenderData, mRenderData.rdPipelineLayout)) {
+  std::vector<VkDescriptorSetLayout> layouts;
+  layouts.push_back(mRenderData.rdTextureDescriptorLayout);
+  layouts.push_back(mRenderData.rdUBODescriptorLayout);
+  layouts.push_back(mObjectMatrixSSBO.rdSSBODescriptorLayout);
+
+  if (!PipelineLayout::init(mRenderData, mRenderData.rdPipelineLayout, layouts)) {
     Logger::log(1, "%s error: could not init pipeline layout\n", __FUNCTION__);
     return false;
   }
@@ -550,7 +598,6 @@ bool VkRenderer::createFlatPipeline() {
   }
   return true;
 }
-
 
 bool VkRenderer::createLinePipeline() {
   std::string vertexShaderFile = "shader/line.vert.spv";
@@ -660,7 +707,9 @@ void VkRenderer::cleanup() {
   Pipeline::cleanup(mRenderData, mRenderData.rdBasicPipeline);
   PipelineLayout::cleanup(mRenderData, mRenderData.rdPipelineLayout);
   Renderpass::cleanup(mRenderData);
+
   UniformBuffer::cleanup(mRenderData);
+  ShaderStorageBuffer::cleanup(mRenderData, mObjectMatrixSSBO);
 
   VertexBuffer::cleanup(mRenderData, mPolygonVertexBuffer);
   VertexBuffer::cleanup(mRenderData, mLineVertexBuffer);
@@ -807,9 +856,6 @@ bool VkRenderer::draw(const float deltaTime) {
 
   handleMovementKeys();
 
-  mAllMeshes->vertices.clear();
-  mLineMeshes->vertices.clear();
-
   if (vkWaitForFences(mRenderData.rdVkbDevice.device, 1, &mRenderData.rdRenderFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
     Logger::log(1, "%s error: waiting for fence failed\n", __FUNCTION__);
     return false;
@@ -872,22 +918,12 @@ bool VkRenderer::draw(const float deltaTime) {
   scissor.offset = { 0, 0 };
   scissor.extent = mRenderData.rdVkbSwapchain.extent;
 
-  mMatrixGenerateTimer.start();
-  mMatrices.projectionMatrix = glm::perspective(
-    glm::radians(static_cast<float>(mRenderData.rdFieldOfView)),
-    static_cast<float>(mRenderData.rdVkbSwapchain.extent.width) /
-    static_cast<float>(mRenderData.rdVkbSwapchain.extent.height), 0.01f, 50.0f);
-
-  mCamera.updateCamera(mRenderData, deltaTime);
-  mMatrices.viewMatrix = mCamera.getViewMatrix(mRenderData);
-
-  mRenderData.rdMatrixGenerateTime = mMatrixGenerateTimer.stop();
-
   /* reset all values to zero when UI button is pressed */
   if (mRenderData.rdResetAnglesAndPosition) {
     mRenderData.rdResetAnglesAndPosition = false;
 
     mQuatModelOrientation = glm::quat();
+    mSphereModelOrientation = glm::quat();
 
     initModel();
   }
@@ -905,7 +941,7 @@ bool VkRenderer::draw(const float deltaTime) {
 
   mRenderData.rdPhysicsTime = mPhysicsTimer.stop();
 
-
+  /* get new values */
   mQuatModelPos = mBoxModel->getPosition();
   mRenderData.rdBoxModelPosition = mQuatModelPos;
 
@@ -913,11 +949,30 @@ bool VkRenderer::draw(const float deltaTime) {
   /* conjugate = same length, but opposite direction*/
   mQuatModelOrientConjugate = glm::conjugate(mQuatModelOrientation);
 
+
   mSphereModelPos = mSphereModel->getPosition();
   mRenderData.rdSphereModelPosition = mSphereModelPos;
 
   mSphereModelOrientation = mSphereModel->getOrientation();
   mSphereModelOrientConjugate = glm::conjugate(mSphereModelOrientation);
+
+
+  mMatrixGenerateTimer.start();
+
+  mCamera.updateCamera(mRenderData, deltaTime);
+  mUboMatrices.at(0) = mCamera.getViewMatrix(mRenderData);
+
+  mUboMatrices.at(1) = glm::perspective(
+    glm::radians(static_cast<float>(mRenderData.rdFieldOfView)),
+    static_cast<float>(mRenderData.rdVkbSwapchain.extent.width) /
+    static_cast<float>(mRenderData.rdVkbSwapchain.extent.height), 0.01f, 50.0f);
+
+  mModelMatrices.at(0) = glm::translate(glm::mat4(1.0f), mQuatModelPos) * glm::mat4_cast(mQuatModelOrientation);
+  mModelMatrices.at(1) = glm::translate(glm::mat4(1.0f), mSphereModelPos) * glm::mat4_cast(mSphereModelOrientation);
+
+  mRenderData.rdMatrixGenerateTime = mMatrixGenerateTimer.stop();
+
+  mLineMeshes->vertices.clear();
 
   /* draw a static coordinate system */
   mCoordArrowsMesh.vertices.clear();
@@ -1025,44 +1080,6 @@ bool VkRenderer::draw(const float deltaTime) {
   mLineMeshes->vertices.insert(mLineMeshes->vertices.end(),
     mSpringLineMesh.vertices.begin(), mSpringLineMesh.vertices.end());
 
-  /* draw box model */
-  *mQuatModelMesh = mBoxModel->getVertexData();
-  mRenderData.rdTriangleCount = mQuatModelMesh->vertices.size() / 3;
-  std::for_each(mQuatModelMesh->vertices.begin(), mQuatModelMesh->vertices.end(),
-    [=](auto &n){
-      glm::quat position = glm::quat(0.0f, n.position.x, n.position.y, n.position.z);
-      glm::quat newPosition =
-        mQuatModelOrientation * position * mQuatModelOrientConjugate;
-      n.position.x = newPosition.x;
-      n.position.y = newPosition.y;
-      n.position.z = newPosition.z;
-      n.position  += mQuatModelPos;
-
-      glm::mat3 normalMat = glm::transpose(glm::mat3_cast(mQuatModelOrientConjugate));
-      n.normal = glm::normalize(normalMat * n.normal);
-  });
-  mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
-    mQuatModelMesh->vertices.begin(), mQuatModelMesh->vertices.end());
-
-  /* draw sphere */
-  *mSphereModelMesh = mSphereModel->getVertexData();
-  mRenderData.rdFlatTriangleCount = mSphereModelMesh->vertices.size() / 3;
-  std::for_each(mSphereModelMesh->vertices.begin(), mSphereModelMesh->vertices.end(),
-    [=](auto &n){
-      glm::quat position = glm::quat(0.0f, n.position.x, n.position.y, n.position.z);
-      glm::quat newPosition =
-        mSphereModelOrientation * position * mSphereModelOrientConjugate;
-      n.position.x = newPosition.x;
-      n.position.y = newPosition.y;
-      n.position.z = newPosition.z;
-      n.position  += mSphereModelPos;
-
-      glm::mat3 normalMat = glm::transpose(glm::mat3_cast(mSphereModelOrientConjugate));
-      n.normal = glm::normalize(normalMat * n.normal);
-  });
-  mAllMeshes->vertices.insert(mAllMeshes->vertices.end(),
-    mSphereModelMesh->vertices.begin(), mSphereModelMesh->vertices.end());
-
   /* count line start in vertex buffer */
   mLineIndexCount = mCoordArrowsMesh.vertices.size() +
     mQuatArrowMesh.vertices.size() + mSphereArrowMesh.vertices.size() + mSpringLineMesh.vertices.size();
@@ -1082,9 +1099,8 @@ bool VkRenderer::draw(const float deltaTime) {
     return false;
   }
 
-  /* upload data to VBO */
+  /* upload line data to VBO */
   mUploadToVBOTimer.start();
-  VertexBuffer::uploadData(mRenderData, mPolygonVertexBuffer, *mAllMeshes);
   VertexBuffer::uploadData(mRenderData, mLineVertexBuffer, *mLineMeshes);
   mRenderData.rdUploadToVBOTime = mUploadToVBOTimer.stop();
 
@@ -1095,11 +1111,13 @@ bool VkRenderer::draw(const float deltaTime) {
   vkCmdSetViewport(mRenderData.rdCommandBuffer, 0, 1, &viewport);
   vkCmdSetScissor(mRenderData.rdCommandBuffer, 0, 1, &scissor);
 
+  vkCmdBindDescriptorSets(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipelineLayout, 0, 1, &mRenderData.rdTextureDescriptorSet, 0, nullptr);
+  vkCmdBindDescriptorSets(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipelineLayout, 1, 1, &mRenderData.rdUBODescriptorSet, 0, nullptr);
+  vkCmdBindDescriptorSets(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipelineLayout, 2, 1, &mObjectMatrixSSBO.rdSSBODescriptorSet, 0, nullptr);
+
   /* vertex buffer */
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(mRenderData.rdCommandBuffer, 0, 1, &mLineVertexBuffer.rdVertexBuffer, &offset);
-
-  vkCmdBindDescriptorSets(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipelineLayout, 1, 1, &mRenderData.rdUBODescriptorSet, 0, nullptr);
 
   /* draw lines first */
   if (mLineIndexCount > 0) {
@@ -1111,16 +1129,15 @@ bool VkRenderer::draw(const float deltaTime) {
   /* draw models last, after lines */
   vkCmdBindVertexBuffers(mRenderData.rdCommandBuffer, 0, 1, &mPolygonVertexBuffer.rdVertexBuffer, &offset);
 
-  /* draw flat models */
-  vkCmdBindPipeline(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdFlatPipeline);
-  vkCmdDraw(mRenderData.rdCommandBuffer, mRenderData.rdFlatTriangleCount * 3, 1, mRenderData.rdTriangleCount * 3, 0);
-
   /* draw textured models */
-  vkCmdBindDescriptorSets(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdPipelineLayout, 0, 1, &mRenderData.rdTextureDescriptorSet, 0, nullptr);
   vkCmdBindPipeline(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdBasicPipeline);
   vkCmdDraw(mRenderData.rdCommandBuffer, mRenderData.rdTriangleCount * 3, 1, 0, 0);
 
-  // imgui overlay
+  /* draw flat models */
+  vkCmdBindPipeline(mRenderData.rdCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRenderData.rdFlatPipeline);
+  vkCmdDraw(mRenderData.rdCommandBuffer, mRenderData.rdFlatTriangleCount * 3, 1, mRenderData.rdTriangleCount * 3, 1);
+
+  /* imgui overlay */
   mUIGenerateTimer.start();
   mUserInterface.createFrame(mRenderData);
   mRenderData.rdUIGenerateTime = mUIGenerateTimer.stop();
@@ -1136,12 +1153,10 @@ bool VkRenderer::draw(const float deltaTime) {
     return false;
   }
 
-  /* upload UBO data after commands are created */
+  /* upload UBO and SSBO data after commands are created */
   mUploadToUBOTimer.start();
-  void* data;
-  vmaMapMemory(mRenderData.rdAllocator, mRenderData.rdUboBufferAlloc, &data);
-  memcpy(data, &mMatrices, static_cast<uint32_t>(sizeof(VkUploadMatrices)));
-  vmaUnmapMemory(mRenderData.rdAllocator, mRenderData.rdUboBufferAlloc);
+  UniformBuffer::uploadData(mRenderData, mUboMatrices);
+  ShaderStorageBuffer::uploadData(mRenderData, mObjectMatrixSSBO, mModelMatrices);
   mRenderData.rdUploadToUBOTime = mUploadToUBOTimer.stop();
 
   /* submit command buffer */
