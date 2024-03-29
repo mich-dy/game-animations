@@ -242,7 +242,7 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename,
 
   VkPhysicalDeviceFeatures supportedFeatures{};
   vkGetPhysicalDeviceFeatures(renderData.rdVkbPhysicalDevice.physical_device, &supportedFeatures);
-  Logger::log(2, "%s: Anisotropy supported: %s\n", __FUNCTION__, supportedFeatures.samplerAnisotropy ? "yes" : "no");
+  Logger::log(2, "%s: anisotropy supported: %s\n", __FUNCTION__, supportedFeatures.samplerAnisotropy ? "yes" : "no");
   const VkBool32 anisotropyAvailable = supportedFeatures.samplerAnisotropy;
 
   VkPhysicalDeviceProperties physProperties{};
