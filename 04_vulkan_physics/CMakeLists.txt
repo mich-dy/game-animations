@@ -94,8 +94,7 @@ endif()
 
 include_directories(${GLFW3_INCLUDE_DIR})
 
-# GLM version 1.0 re-enables the need for this define :(
-# Make it global to avoid checks in the source files
+# enable experimental GLM functions globally
 add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 
 if(MSVC)
