@@ -197,6 +197,8 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename,
       if (mipHeight > 1) {
         mipHeight /= 2;
       }
+
+      Logger::log(1, "%s: created level %i with width %i and height %i\n", __FUNCTION__, i, mipWidth, mipHeight);
     }
 
     VkImageMemoryBarrier lastBarrier{};
@@ -238,6 +240,16 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename,
     return false;
   }
 
+  VkPhysicalDeviceFeatures supportedFeatures{};
+  vkGetPhysicalDeviceFeatures(renderData.rdVkbPhysicalDevice.physical_device, &supportedFeatures);
+  Logger::log(2, "%s: Anisotropy supported: %s\n", __FUNCTION__, supportedFeatures.samplerAnisotropy ? "yes" : "no");
+  const VkBool32 anisotropyAvailable = supportedFeatures.samplerAnisotropy;
+
+  VkPhysicalDeviceProperties physProperties{};
+  vkGetPhysicalDeviceProperties(renderData.rdVkbPhysicalDevice.physical_device, &physProperties);
+  const float maxAnisotropy = physProperties.limits.maxSamplerAnisotropy;
+  Logger::log(2, "%s: device supports max anisotropy of %f\n", __FUNCTION__, maxAnisotropy);
+
   VkSamplerCreateInfo texSamplerInfo{};
   texSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
   texSamplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -253,8 +265,8 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename,
   texSamplerInfo.mipLodBias = 0.0f;
   texSamplerInfo.minLod = 0.0f;
   texSamplerInfo.maxLod = static_cast<float>(mipmapLevels);
-  texSamplerInfo.anisotropyEnable = VK_FALSE;
-  texSamplerInfo.maxAnisotropy = 1.0f;
+  texSamplerInfo.anisotropyEnable = anisotropyAvailable;
+  texSamplerInfo.maxAnisotropy = maxAnisotropy;
 
   if (vkCreateSampler(renderData.rdVkbDevice.device, &texSamplerInfo, nullptr, &renderData.rdTextureSampler) != VK_SUCCESS) {
     Logger::log(1, "%s error: could not create sampler for texture\n", __FUNCTION__);

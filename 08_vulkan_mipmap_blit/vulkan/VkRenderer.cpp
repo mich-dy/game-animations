@@ -116,9 +116,14 @@ bool VkRenderer::deviceInit() {
     return false;
   }
 
+  /* force anisotropy */
+  VkPhysicalDeviceFeatures requiredFeatures{};
+  requiredFeatures.samplerAnisotropy = VK_TRUE;
+
+
   /* just get the first available device */
   vkb::PhysicalDeviceSelector physicalDevSel{mRenderData.rdVkbInstance};
-  auto physicalDevSelRet = physicalDevSel.set_surface(mSurface).select();
+  auto physicalDevSelRet = physicalDevSel.set_surface(mSurface).set_required_features(requiredFeatures).select();
   if (!physicalDevSelRet) {
     Logger::log(1, "%s error: could not get physical devices\n", __FUNCTION__);
     return false;
