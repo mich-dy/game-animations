@@ -8,6 +8,6 @@
 
 class Texture {
   public:
-    static bool loadTexture(VkRenderData &renderData, std::string textureFilename);
+    static bool loadTexture(VkRenderData &renderData, std::string textureFilename, const bool generateMipmaps = true);
     static void cleanup(VkRenderData &renderData);
 };

@@ -6,10 +6,11 @@
 #include "Texture.h"
 #include "Logger.h"
 
-bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename) {
+bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename, const bool generateMipmaps) {
   int texWidth;
   int texHeight;
   int numberOfChannels;
+  int mipmapLevels = 1;
 
   unsigned char *textureData = stbi_load(textureFilename.c_str(), &texWidth, &texHeight, &numberOfChannels, STBI_rgb_alpha);
 
@@ -17,6 +18,10 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename)
     Logger::log(1, "%s error: could not load file '%s'\n", __FUNCTION__, textureFilename.c_str());
     stbi_image_free(textureData);
     return false;
+  }
+
+  if (generateMipmaps) {
+    mipmapLevels += static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight))));
   }
 
   VkDeviceSize imageSize = texWidth * texHeight * 4;
@@ -27,12 +32,12 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename)
   imageInfo.extent.width = static_cast<uint32_t>(texWidth);
   imageInfo.extent.height = static_cast<uint32_t>(texHeight);
   imageInfo.extent.depth = 1;
-  imageInfo.mipLevels = 1;
+  imageInfo.mipLevels = mipmapLevels;
   imageInfo.arrayLayers = 1;
   imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
   imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
   imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
   imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -74,7 +79,7 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename)
   VkImageSubresourceRange stagingBufferRange{};
   stagingBufferRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   stagingBufferRange.baseMipLevel = 0;
-  stagingBufferRange.levelCount = 1;
+  stagingBufferRange.levelCount = mipmapLevels;
   stagingBufferRange.baseArrayLayer = 0;
   stagingBufferRange.layerCount = 1;
 
@@ -107,7 +112,12 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename)
   VkImageMemoryBarrier stagingBufferShaderBarrier{};
   stagingBufferShaderBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   stagingBufferShaderBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  stagingBufferShaderBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  if (mipmapLevels > 1) {
+    /* VkCmdBlit() requires the original image to be in TRANSFER_DST_OPTIMAL format*/
+    stagingBufferShaderBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  } else {
+    stagingBufferShaderBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  }
   stagingBufferShaderBarrier.image = renderData.rdTextureImage;
   stagingBufferShaderBarrier.subresourceRange = stagingBufferRange;
   stagingBufferShaderBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -116,6 +126,92 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename)
   vkCmdPipelineBarrier(uploadCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &stagingBufferTransferBarrier);
   vkCmdCopyBufferToImage(uploadCommandBuffer, stagingBuffer, renderData.rdTextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &stagingBufferCopy);
   vkCmdPipelineBarrier(uploadCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &stagingBufferShaderBarrier);
+
+
+  /* generate mipmap blit commands */
+  if (generateMipmaps) {
+    VkImageSubresourceRange blitRange{};
+    blitRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    blitRange.baseMipLevel = 0;
+    blitRange.levelCount = 1;
+    blitRange.baseArrayLayer = 0;
+    blitRange.layerCount = 1;
+
+    /* 1st barrier, we need to transfer to src optimal for the blit */
+    VkImageMemoryBarrier firstBarrier{};
+    firstBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    firstBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    firstBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    firstBarrier.image = renderData.rdTextureImage;
+    firstBarrier.subresourceRange = blitRange;
+    firstBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    firstBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+    /* 2nd barrier -> transfer to shader optimal */
+    VkImageMemoryBarrier secondBarrier{};
+    secondBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    secondBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    secondBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    secondBarrier.image = renderData.rdTextureImage;
+    secondBarrier.subresourceRange = blitRange;
+    secondBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    secondBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    VkImageBlit mipBlit{};
+    mipBlit.srcOffsets[0] = { 0, 0, 0 };
+    mipBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    mipBlit.srcSubresource.baseArrayLayer = 0;
+    mipBlit.srcSubresource.layerCount = 1;
+
+    mipBlit.dstOffsets[0] = { 0, 0, 0 };
+    mipBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    mipBlit.dstSubresource.baseArrayLayer = 0;
+    mipBlit.dstSubresource.layerCount = 1;
+
+    int32_t mipWidth = texWidth;
+    int32_t mipHeight = texHeight;
+    for (int i = 1; i < mipmapLevels; ++i) {
+      mipBlit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+      mipBlit.srcSubresource.mipLevel = i - 1;
+
+      mipBlit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+      mipBlit.dstSubresource.mipLevel = i;
+
+      firstBarrier.subresourceRange.baseMipLevel = i -1;
+      vkCmdPipelineBarrier(uploadCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &firstBarrier);
+
+      vkCmdBlitImage(uploadCommandBuffer,
+                     renderData.rdTextureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                     renderData.rdTextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                     1, &mipBlit,
+                     VK_FILTER_LINEAR);
+
+      secondBarrier.subresourceRange.baseMipLevel = i -1;
+      vkCmdPipelineBarrier(uploadCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &secondBarrier);
+
+      if (mipWidth > 1) {
+        mipWidth /= 2;
+      }
+      if (mipHeight > 1) {
+        mipHeight /= 2;
+      }
+    }
+
+    VkImageMemoryBarrier lastBarrier{};
+    lastBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    lastBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    lastBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    lastBarrier.image = renderData.rdTextureImage;
+    lastBarrier.subresourceRange = blitRange;
+    lastBarrier.subresourceRange.baseMipLevel = mipmapLevels - 1;
+    lastBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    lastBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier(uploadCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         0, 0, nullptr, 0, nullptr, 1, &lastBarrier);
+  }
 
   bool commandResult = CommandBuffer::submitSingleShotBuffer(renderData, uploadCommandBuffer, renderData.rdGraphicsQueue);
   vmaDestroyBuffer(renderData.rdAllocator, stagingBuffer, stagingBufferAlloc);
@@ -133,7 +229,7 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename)
   texViewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
   texViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   texViewInfo.subresourceRange.baseMipLevel = 0;
-  texViewInfo.subresourceRange.levelCount = 1;
+  texViewInfo.subresourceRange.levelCount = mipmapLevels;
   texViewInfo.subresourceRange.baseArrayLayer = 0;
   texViewInfo.subresourceRange.layerCount = 1;
 
@@ -156,7 +252,7 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename)
   texSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
   texSamplerInfo.mipLodBias = 0.0f;
   texSamplerInfo.minLod = 0.0f;
-  texSamplerInfo.maxLod = 0.0f;
+  texSamplerInfo.maxLod = static_cast<float>(mipmapLevels);
   texSamplerInfo.anisotropyEnable = VK_FALSE;
   texSamplerInfo.maxAnisotropy = 1.0f;
 
