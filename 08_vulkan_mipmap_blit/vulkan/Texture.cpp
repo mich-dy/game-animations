@@ -68,13 +68,8 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename)
 
   stbi_image_free(textureData);
 
-  /* transfer to get optimal layout */
-  VkCommandBuffer stagingCommandBuffer;
-
-  if (!CommandBuffer::init(renderData, stagingCommandBuffer)) {
-    Logger::log(1, "%s error: could not create texture upload command buffers\n", __FUNCTION__);
-    return false;
-  }
+  /* upload */
+  VkCommandBuffer uploadCommandBuffer = CommandBuffer::createSingleShotBuffer(renderData);
 
   VkImageSubresourceRange stagingBufferRange{};
   stagingBufferRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -118,68 +113,17 @@ bool Texture::loadTexture(VkRenderData &renderData, std::string textureFilename)
   stagingBufferShaderBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
   stagingBufferShaderBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-  if (vkResetCommandBuffer(stagingCommandBuffer, 0) != VK_SUCCESS) {
-    Logger::log(1, "%s error: failed to reset staging command buffer\n", __FUNCTION__);
-    return false;
-  }
+  vkCmdPipelineBarrier(uploadCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &stagingBufferTransferBarrier);
+  vkCmdCopyBufferToImage(uploadCommandBuffer, stagingBuffer, renderData.rdTextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &stagingBufferCopy);
+  vkCmdPipelineBarrier(uploadCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &stagingBufferShaderBarrier);
 
-  VkCommandBufferBeginInfo cmdBeginInfo{};
-  cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-  if(vkBeginCommandBuffer(stagingCommandBuffer, &cmdBeginInfo) != VK_SUCCESS) {
-    Logger::log(1, "%s error: failed to begin staging command buffer\n", __FUNCTION__);
-    return false;
-  }
-
-  vkCmdPipelineBarrier(stagingCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &stagingBufferTransferBarrier);
-  vkCmdCopyBufferToImage(stagingCommandBuffer, stagingBuffer, renderData.rdTextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &stagingBufferCopy);
-  vkCmdPipelineBarrier(stagingCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &stagingBufferShaderBarrier);
-
-  if (vkEndCommandBuffer(stagingCommandBuffer) != VK_SUCCESS) {
-    Logger::log(1, "%s error: failed to end staging command buffer\n", __FUNCTION__);
-    return false;
-  }
-
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.pWaitDstStageMask = nullptr;
-  submitInfo.waitSemaphoreCount = 0;
-  submitInfo.pWaitSemaphores = nullptr;
-  submitInfo.signalSemaphoreCount = 0;
-  submitInfo.pSignalSemaphores = nullptr;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &stagingCommandBuffer;
-
-  VkFence stagingBufferFence;
-
-  VkFenceCreateInfo fenceInfo{};
-  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-  if (vkCreateFence(renderData.rdVkbDevice.device, &fenceInfo, nullptr, &stagingBufferFence) != VK_SUCCESS) {
-    Logger::log(1, "%s error: failed to create staging buffer fence\n", __FUNCTION__);
-    return false;
-  }
-
-  if (vkResetFences(renderData.rdVkbDevice.device, 1, &stagingBufferFence) != VK_SUCCESS) {
-    Logger::log(1, "%s error: staging buffer fence reset failed\n", __FUNCTION__);
-    return false;
-  }
-
-  if (vkQueueSubmit(renderData.rdGraphicsQueue, 1, &submitInfo, stagingBufferFence) != VK_SUCCESS) {
-    Logger::log(1, "%s error: failed to submit staging buffer copy command buffer\n", __FUNCTION__);
-    return false;
-  }
-
-  if (vkWaitForFences(renderData.rdVkbDevice.device, 1, &stagingBufferFence, VK_TRUE, UINT64_MAX) != VK_SUCCESS) {
-    Logger::log(1, "%s error: waiting for staging buffer copy fence failed\n", __FUNCTION__);
-    return false;
-  }
-
-  vkDestroyFence(renderData.rdVkbDevice.device, stagingBufferFence, nullptr);
-  CommandBuffer::cleanup(renderData, stagingCommandBuffer);
+  bool commandResult = CommandBuffer::submitSingleShotBuffer(renderData, uploadCommandBuffer, renderData.rdGraphicsQueue);
   vmaDestroyBuffer(renderData.rdAllocator, stagingBuffer, stagingBufferAlloc);
+
+  if (!commandResult) {
+    Logger::log(1, "%s error: could not submit texture transfer commands\n", __FUNCTION__);
+    return false;
+  }
 
   /* image view and sampler */
   VkImageViewCreateInfo texViewInfo{};
